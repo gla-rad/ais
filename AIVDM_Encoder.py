@@ -175,7 +175,7 @@ def encode_21(__mmsi, __aid_type, __aid_name, __long, __lat, __vsize, __virtual)
 	_time = '{0:b}'.format(60).rjust(6,'0')
 	_virtual = '{0:b}'.format(int(__virtual))
 
-	return _type + _repeat + _mmsi + _aid_type + _name + _accurancy + _long + _lat + _half_length + _half_length + _half_width + _half_width + _fix + _time + '1000000000' + _virtual + '00' + _name_ext
+	return _type + _repeat + _mmsi + _aid_type + _name + _accurancy + _long + _lat + _half_length + _half_length + _half_width + _half_width + _fix + _time + '0000000000' + _virtual + '00' + _name_ext
 
 
 def encode_22(__mmsi, __channel_a, __channel_b, __ne_lon, __ne_lat, __sw_lon, __sw_lat):
