@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # This script is part of the AIS BlackToolkit.
 # AIVDM_Encoder.py allows you to generate arbitrary AIVDM payloads. The main AIS message types are supported.
@@ -16,6 +16,7 @@
 #
 
 import sys
+from time import gmtime, strftime
 
 # Adapted from gpsd-3.9's driver_ais.c
 def encode_string(string):
@@ -87,6 +88,21 @@ def encode_4(__mmsi, __speed, __long, __lat, __course, __ts):
 
 	return _type+_repeat+_mmsi+'0'*23+_hour+_min+_sec+_accurancy+_long+_lat+_device+'0'*11+_rstatus
 
+
+def encode_8(__mmsi, __msg):
+        _type = '{0:b}'.format(8).rjust(6,'0') 								# 8
+        _repeat = "00" 														# repeat (directive to an AIS transceiver that this message should be rebroadcast.)
+        _mmsi = '{0:b}'.format(__mmsi).rjust(30,'0') 						# 30 bits (247320162)
+        _spare = "00"														# spare bit
+        _dac = "0000000001" 												# Desingnated area code (ten chars, TODO shouldnt be hard coded: Need a code for signature)
+        _fid = "000001" 													# Functional ID (six chars, TODO shouldnt be hard coded: Need a code for signature)
+        #_msg = encode_string(__msg + 'X') 									# Payload. X is added as final char of _msg gets dropped (?) 
+        #_msg = ''.join([bin(ord(c))[2:].rjust(8,'0') for c in __msg + 'X'])#Encodes payload as 8 bit ascii, not 6 bit like above. (maybe use uunecode instead?)
+        _msg = ''.join([bin(ord(c))[2:].rjust(8,'0') for c in __msg]) 		#Encodes payload as 8 bit ascii, not 6 bit like above. (maybe use uunecode instead?)
+        #Padding needed?
+        return _type+_repeat+_mmsi+_spare+_dac+_fid+_msg
+
+
 def encode_14(__mmsi, __msg):
 	_type = '{0:b}'.format(14).rjust(6,'0')				# 14
 	_repeat = "00"										# repeat (directive to an AIS transceiver that this message should be rebroadcast.)
@@ -126,6 +142,7 @@ def encode_18(__mmsi, __speed, __long, __lat, __course, __ts):
 
 	return _type+_repeat+_mmsi+_reserved+_speed+_accurancy+_long+_lat+_course+_true_heading+_ts+_flags+_rstatus
 
+
 def encode_20(__mmsi, __offset, __slots, __timeout, __increment):
 	_type = '{0:b}'.format(20).rjust(6,'0')				#
 	_repeat = '00'										# repeat (count of how many times this msg has been repeated)
@@ -137,6 +154,7 @@ def encode_20(__mmsi, __offset, __slots, __timeout, __increment):
 	_increment = '{0:b}'.format(__increment).rjust(11,'0')
 
 	return 	_type+_repeat+_mmsi+'00'+_offset+_slots+_timeout+_increment+'00'
+
 
 def encode_21(__mmsi, __aid_type, __aid_name, __long, __lat, __vsize, __virtual):
 	_type = '{0:b}'.format(21).rjust(6,'0')
@@ -156,7 +174,7 @@ def encode_21(__mmsi, __aid_type, __aid_name, __long, __lat, __vsize, __virtual)
 			_name = encode_string(__aid_name[:20])
 			_name_ext =  encode_string(__aid_name[20:])
 			_name_ext += ''.rjust(len(_name_ext) % 8, '0')
-			print _name_ext
+			print(_name_ext)
 
 	_accurancy = '0'
 
@@ -172,7 +190,7 @@ def encode_21(__mmsi, __aid_type, __aid_name, __long, __lat, __vsize, __virtual)
 		_half_width = '000000'
 
 	_fix = '0000'
-	_time = '{0:b}'.format(60).rjust(6,'0')
+	_time = '{0:b}'.format(int(strftime("%S", gmtime()))).rjust(6,'0')
 	_virtual = '{0:b}'.format(int(__virtual))
 
 	return _type + _repeat + _mmsi + _aid_type + _name + _accurancy + _long + _lat + _half_length + _half_length + _half_width + _half_width + _fix + _time + '0000000000' + _virtual + '00' + _name_ext
@@ -262,7 +280,9 @@ def main():
 												23 = Group Assignment Command;
 												24 = Static Data Report)""")
 
-	parser.add_option("--sart_msg",help="14. SART alarm message, default = SART ACTIVE", default="SART ACTIVE")
+	parser.add_option("--sart_msg", help="14. SART alarm message, default = SART ACTIVE", default="SART ACTIVE")
+
+	parser.add_option("--msg",	  help="8. Payload default = Just Testing", default="Just Testing")
 
 	parser.add_option("--mmsi",   help="""MMSI, default = 247320162.
 	                                                970010000 for SART device""",
@@ -278,7 +298,7 @@ def main():
 	parser.add_option("--fatdmatimeout",    help="20. Timeout, default = 0", default=0)
 	parser.add_option("--fatdmaincrement",  help="20. Increment, default = 0", default=0)
 
-	parser.add_option("--v_AtoN",help="21. Specify that the AtoN is virtual, default = real.", action="store_true")
+	parser.add_option("--v_AtoN", help="21. Specify that the AtoN is virtual, default = real.", action="store_true")
 	parser.add_option("--aid_type", help="21. Type of AtoN (light, bouye)", default=0)
 	parser.add_option("--aid_name", help="21. Name of AtoN", default="@@@@@@@@@@@@@@@@@@@@")
 
@@ -300,7 +320,7 @@ def main():
 									- 51 Search and rescue vessels
 									- 55 Law enforcement vessels
 									""", default=60)
-	parser.add_option("--vsize",   help="24B/21. Vessel Size (multiple of 2), default = 90x14", default="90x14")
+	parser.add_option("--vsize", help="24B/21. Vessel Size (multiple of 2), default = 90x14", default="90x14")
 
 
 	(options, args) = parser.parse_args()
@@ -315,6 +335,9 @@ def main():
 	elif options.type == "4":
 		payload = encode_4(int(options.mmsi), float(options.speed), float(options.long), float(options.lat), float(options.course), int(options.ts))
 
+	elif options.type == "8":
+		payload = encode_8(int(options.mmsi), options.msg)
+
 	elif options.type == "14":
 		payload = encode_14(int(options.mmsi), options.sart_msg)
 
@@ -325,8 +348,7 @@ def main():
 		payload = encode_18(int(options.mmsi), float(options.speed), float(options.long), float(options.lat), float(options.course), int(options.ts))
 
 	elif options.type == "21":
-		if options.v_AtoN == True: __virtual = '1'
-		else: __virtual = '0'
+		__virtual = '1' if options.v_AtoN else '0'
 		payload = encode_21(int(options.mmsi), int(options.aid_type), options.aid_name, float(options.long), float(options.lat), options.vsize, __virtual)
 
 	elif options.type == "22":
@@ -344,7 +366,7 @@ def main():
 	else:
 		parser.error("Sentence type not supported: -h for help.")
 
-	print payload
+	print(payload)
 
 
 if __name__ == "__main__":
