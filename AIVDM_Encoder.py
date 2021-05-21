@@ -190,7 +190,7 @@ def encode_21(__mmsi, __aid_type, __aid_name, __long, __lat, __vsize, __virtual)
 		_half_width = '000000'
 
 	_fix = '0000'
-	_time = '{0:b}'.format(int(strftime("%S", gmtime()))).rjust(6,'0')
+	_time = '{0:b}'.format(60).rjust(6,'0')
 	_virtual = '{0:b}'.format(int(__virtual))
 
 	return _type + _repeat + _mmsi + _aid_type + _name + _accurancy + _long + _lat + _half_length + _half_length + _half_width + _half_width + _fix + _time + '0000000000' + _virtual + '00' + _name_ext

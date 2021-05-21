@@ -10,7 +10,7 @@
     </param>
     <param>
       <key>window_size</key>
-      <value>1280, 1024</value>
+      <value>1440, 1024</value>
     </param>
     <param>
       <key>category</key>
@@ -38,7 +38,7 @@
     </param>
     <param>
       <key>generate_options</key>
-      <value>wx_gui</value>
+      <value>no_gui</value>
     </param>
     <param>
       <key>hier_block_src_path</key>
@@ -66,7 +66,7 @@
     </param>
     <param>
       <key>run_options</key>
-      <value>prompt</value>
+      <value>run</value>
     </param>
     <param>
       <key>run</key>
@@ -93,7 +93,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(281, -1)</value>
+      <value>(296, 4)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -120,7 +120,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(368, -1)</value>
+      <value>(376, 4)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -147,7 +147,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(173, 0)</value>
+      <value>(192, 4)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -178,7 +178,7 @@
     </param>
     <param>
       <key>enable_NRZI</key>
-      <value>True</value>
+      <value>False</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -210,7 +210,7 @@
     </param>
     <param>
       <key>sentence</key>
-      <value>01010100000111010110111100110100010101101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001011110001011101010000111011011010100100110101000000000000000000000000000000000001110100000000000000</value>
+      <value>01010100000111010110111100110100010101101010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001100101101001010100000111011010011000010000001000000000000000000000000000000000001111000000000000000</value>
     </param>
   </block>
   <block>
@@ -229,7 +229,7 @@
     </param>
     <param>
       <key>enable_NRZI</key>
-      <value>True</value>
+      <value>False</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -261,7 +261,7 @@
     </param>
     <param>
       <key>sentence</key>
-      <value>010100000001101100011001110111011011110000000000000001011110000000000000</value>
+      <value>01010100000111010110111100110100010101101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001100101101001010100000111011010011000010000001000000000000000000000000000000000001111000000000000000</value>
     </param>
   </block>
   <block>
@@ -1832,7 +1832,7 @@
     </param>
     <param>
       <key>args</key>
-      <value></value>
+      <value>hackrf=24993a63</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -1840,7 +1840,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(944, 284)</value>
+      <value>(1192, 60)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -2607,7 +2607,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(944, 444)</value>
+      <value>(1200, 228)</value>
     </param>
     <param>
       <key>_rotation</key>
