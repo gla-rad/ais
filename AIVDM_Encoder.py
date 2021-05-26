@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 #
 # This script is part of the AIS BlackToolkit.
 # AIVDM_Encoder.py allows you to generate arbitrary AIVDM payloads. The main AIS message types are supported.
@@ -16,15 +16,14 @@
 #
 
 import sys
-from time import gmtime, strftime
 
 # Adapted from gpsd-3.9's driver_ais.c
-def encode_string(string):
+def encode_string(string, bits=6):
 	vocabolary = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^- !\"#$%&'()*+,-./0123456789:;<=>?"
 	encoded_string = ""
 	for c in string.upper():
 		index = vocabolary.find(c)
-		encoded_string += '{0:b}'.format(index).rjust(6,'0')
+		encoded_string += '{0:b}'.format(index).rjust(bits,'0')
 	return encoded_string
 
 # NB. We add a mask to tell python how long is our rapresentation (overwise on negative integers, it cannot do the complement 2).
@@ -89,18 +88,31 @@ def encode_4(__mmsi, __speed, __long, __lat, __course, __ts):
 	return _type+_repeat+_mmsi+'0'*23+_hour+_min+_sec+_accurancy+_long+_lat+_device+'0'*11+_rstatus
 
 
+def encode_6(__mmsi, __d_mmsi, __msg):
+	_type = '{0:b}'.format(6).rjust(6,'0') 				# 6
+	_repeat = "00" 										# repeat (directive to an AIS transceiver that this message should be rebroadcast.)
+	_mmsi = '{0:b}'.format(__mmsi).rjust(30,'0') 		# 30 bits (247320162)
+	_sequence = "00" 									# sequence number
+	_d_mmsi = '{0:b}'.format(__d_mmsi).rjust(30,'0') 	# 30 bits (247320162)
+	_retransmit = "0"									# retransmision flag 0 = no retransmision
+	_spare = "0"										# spare bit
+	_dac = "0000000001"									# Designated area code (ten chars, TODO shouldnt be hard coded: Need a code for signature)
+	_fid = "000001"										# Functional ID (six chars, TODO shouldnt be hard coded: Need a code for signature)
+	_msg = encode_string(__msg, 8)						# Encodes payload as 8 bit ascii, not 6 bit like above. (maybe use uunecode instead?)
+	#Padding needed?
+	return _type+_repeat+_mmsi+_sequence+_d_mmsi+_retransmit+_spare+_dac+_fid+_msg
+
+
 def encode_8(__mmsi, __msg):
-        _type = '{0:b}'.format(8).rjust(6,'0') 								# 8
-        _repeat = "00" 														# repeat (directive to an AIS transceiver that this message should be rebroadcast.)
-        _mmsi = '{0:b}'.format(__mmsi).rjust(30,'0') 						# 30 bits (247320162)
-        _spare = "00"														# spare bit
-        _dac = "0000000001" 												# Desingnated area code (ten chars, TODO shouldnt be hard coded: Need a code for signature)
-        _fid = "000001" 													# Functional ID (six chars, TODO shouldnt be hard coded: Need a code for signature)
-        #_msg = encode_string(__msg + 'X') 									# Payload. X is added as final char of _msg gets dropped (?) 
-        #_msg = ''.join([bin(ord(c))[2:].rjust(8,'0') for c in __msg + 'X'])#Encodes payload as 8 bit ascii, not 6 bit like above. (maybe use uunecode instead?)
-        _msg = ''.join([bin(ord(c))[2:].rjust(8,'0') for c in __msg]) 		#Encodes payload as 8 bit ascii, not 6 bit like above. (maybe use uunecode instead?)
-        #Padding needed?
-        return _type+_repeat+_mmsi+_spare+_dac+_fid+_msg
+	_type = '{0:b}'.format(8).rjust(6,'0')				# 8
+	_repeat = "00"										# repeat (directive to an AIS transceiver that this message should be rebroadcast.)
+	_mmsi = '{0:b}'.format(__mmsi).rjust(30,'0')		# 30 bits (247320162)
+	_spare = "00"										# spare bit
+	_dac = "0000000001"									# Designated area code (ten chars, TODO shouldnt be hard coded: Need a code for signature)
+	_fid = "000001"										# Functional ID (six chars, TODO shouldnt be hard coded: Need a code for signature)
+	_msg = encode_string(__msg, 8)						# Encodes payload as 8 bit ascii, not 6 bit like above. (maybe use uunecode instead?)
+	#Padding needed?
+	return _type+_repeat+_mmsi+_spare+_dac+_fid+_msg
 
 
 def encode_14(__mmsi, __msg):
@@ -272,6 +284,8 @@ def main():
 	parser.add_option("--type",   help="""Type:
 												1  = Position Report Class A;
 												4 = Base Station Report;
+												6 = Addressed Message;
+												8 = Broadcast Message;
 												14 = Safety-Related Broadcast Message;
 												18 = Standard Class B CS Position Report;
 												20 = Data Link Management Message (ref. RFC);
@@ -282,11 +296,11 @@ def main():
 
 	parser.add_option("--sart_msg", help="14. SART alarm message, default = SART ACTIVE", default="SART ACTIVE")
 
-	parser.add_option("--msg",	  help="8. Payload default = Just Testing", default="Just Testing")
+	parser.add_option("--msg",	  help="6/8. Communication message, default = Hello World", default="Hello World")
 
-	parser.add_option("--mmsi",   help="""MMSI, default = 247320162.
-	                                                970010000 for SART device""",
-	                                                default=247320162)
+	parser.add_option("--mmsi",   help="""MMSI, default = 247320162. 970010000 for SART device""", default=247320162)
+	parser.add_option("--d_mmsi", help="""Destination MMSI, default = 247320162. 970010000 for SART device""", default=247320162)
+
 	parser.add_option("--speed",  help="18. Speed (knot), default = 0.1", default=0.1)
 	parser.add_option("--status", help="1. Navigation Status, default = 15 (undefined)", default=15)
 	parser.add_option("--long",   help="18. Longitude, default = 9.72357833333333", default=9.72357833333333)
@@ -334,6 +348,9 @@ def main():
 
 	elif options.type == "4":
 		payload = encode_4(int(options.mmsi), float(options.speed), float(options.long), float(options.lat), float(options.course), int(options.ts))
+
+	elif options.type == "6":
+		payload = encode_6(int(options.mmsi), int(options.d_mmsi), options.msg)
 
 	elif options.type == "8":
 		payload = encode_8(int(options.mmsi), options.msg)
