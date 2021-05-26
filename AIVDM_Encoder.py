@@ -18,7 +18,7 @@
 import sys
 
 # Adapted from gpsd-3.9's driver_ais.c
-def encode_string(string, ascii:bool = False):
+def encode_string(string, ascii = False):
 	vocabolary = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^- !\"#$%&'()*+,-./0123456789:;<=>?"
 	encoded_string = ""
 	if not ascii:
