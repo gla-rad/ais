@@ -18,13 +18,22 @@
 import sys
 
 # Adapted from gpsd-3.9's driver_ais.c
-def encode_string(string, bits=6):
+def encode_string(string, ascii:bool = False):
 	vocabolary = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^- !\"#$%&'()*+,-./0123456789:;<=>?"
 	encoded_string = ""
-	for c in string.upper():
-		index = vocabolary.find(c)
-		encoded_string += '{0:b}'.format(index).rjust(bits,'0')
+	if not ascii:
+		for c in string.upper():
+			index = vocabolary.find(c)
+			encoded_string += '{0:b}'.format(index).rjust(6,'0')
+	else:
+		encoded_string = ''.join([bin(ord(c))[2:].rjust(8,'0') for c in string])
 	return encoded_string
+
+def pad_mod_6(string):
+    # Padding to match the mutliple of 6 requirement
+	_padding = '0'*((6 - (len(string) % 6)) % 6)				
+	#Return the padded string
+	return string+_padding
 
 # NB. We add a mask to tell python how long is our rapresentation (overwise on negative integers, it cannot do the complement 2).
 def compute_long_lat (__long, __lat):
@@ -98,9 +107,8 @@ def encode_6(__mmsi, __d_mmsi, __msg):
 	_spare = "0"										# spare bit
 	_dac = "0000000001"									# Designated area code (ten chars, TODO shouldnt be hard coded: Need a code for signature)
 	_fid = "000001"										# Functional ID (six chars, TODO shouldnt be hard coded: Need a code for signature)
-	_msg = encode_string(__msg, 8)						# Encodes payload as 8 bit ascii, not 6 bit like above. (maybe use uunecode instead?)
-	#Padding needed?
-	return _type+_repeat+_mmsi+_sequence+_d_mmsi+_retransmit+_spare+_dac+_fid+_msg
+	_msg = encode_string(__msg, True)					# Encodes payload as 8 bit ascii, not 6 bit like above. (maybe use uunecode instead?)
+	return pad_mod_6(_type+_repeat+_mmsi+_sequence+_d_mmsi+_retransmit+_spare+_dac+_fid+_msg)
 
 
 def encode_8(__mmsi, __msg):
@@ -110,9 +118,8 @@ def encode_8(__mmsi, __msg):
 	_spare = "00"										# spare bit
 	_dac = "0000000001"									# Designated area code (ten chars, TODO shouldnt be hard coded: Need a code for signature)
 	_fid = "000001"										# Functional ID (six chars, TODO shouldnt be hard coded: Need a code for signature)
-	_msg = encode_string(__msg, 8)						# Encodes payload as 8 bit ascii, not 6 bit like above. (maybe use uunecode instead?)
-	#Padding needed?
-	return _type+_repeat+_mmsi+_spare+_dac+_fid+_msg
+	_msg = encode_string(__msg, True)					# Encodes payload as 8 bit ascii, not 6 bit like above. (maybe use uunecode instead?)
+	return pad_mod_6(_type+_repeat+_mmsi+_spare+_dac+_fid+_msg)
 
 
 def encode_14(__mmsi, __msg):
@@ -205,7 +212,7 @@ def encode_21(__mmsi, __aid_type, __aid_name, __long, __lat, __vsize, __virtual)
 	_time = '{0:b}'.format(60).rjust(6,'0')
 	_virtual = '{0:b}'.format(int(__virtual))
 
-	return _type + _repeat + _mmsi + _aid_type + _name + _accurancy + _long + _lat + _half_length + _half_length + _half_width + _half_width + _fix + _time + '0000000000' + _virtual + '00' + _name_ext
+	return pad_mod_6(_type + _repeat + _mmsi + _aid_type + _name + _accurancy + _long + _lat + _half_length + _half_length + _half_width + _half_width + _fix + _time + '0000000000' + _virtual + '00' + _name_ext)
 
 
 def encode_22(__mmsi, __channel_a, __channel_b, __ne_lon, __ne_lat, __sw_lon, __sw_lat):
