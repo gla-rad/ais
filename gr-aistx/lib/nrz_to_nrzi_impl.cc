@@ -37,8 +37,8 @@ namespace gr
         }
 
         /*
-     * The private constructor
-     */
+         * The private constructor
+         */
         nrz_to_nrzi_impl::nrz_to_nrzi_impl()
             : gr::block("nrz_to_nrzi",
                         gr::io_signature::make(1, 1, sizeof(unsigned char)),
@@ -47,8 +47,8 @@ namespace gr
         }
 
         /*
-     * Our virtual destructor.
-     */
+         * Our virtual destructor.
+         */
         nrz_to_nrzi_impl::~nrz_to_nrzi_impl()
         {
         }

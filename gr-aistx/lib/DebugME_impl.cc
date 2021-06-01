@@ -38,8 +38,8 @@ namespace gr
         }
 
         /*
-     * The private constructor
-     */
+         * The private constructor
+         */
         DebugME_impl::DebugME_impl(size_t itemsize)
             : gr::block("DebugME",
                         gr::io_signature::make(1, 1, itemsize),
@@ -49,8 +49,8 @@ namespace gr
         }
 
         /*
-     * Our virtual destructor.
-     */
+         * Our virtual destructor.
+         */
         DebugME_impl::~DebugME_impl()
         {
         }
