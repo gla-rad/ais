@@ -19,8 +19,9 @@ You will need to have the appropriate dependencies installed. On an Ubuntu 20.04
 system these are:
 
 $ sudo apt install gnuradio
+$ sudo apt install swig
 $ sudo apt install doxygen
-$ sudo apt install graphviz$
+$ sudo apt install graphviz
 $ sudo apt install libboost-all-dev
 $ sudo apt install liborc-0.4-dev
 
