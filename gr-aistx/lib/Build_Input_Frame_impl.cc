@@ -59,6 +59,7 @@ namespace gr
               d_repeat(repeat),
               d_enable_NRZI(enable_NRZI)
         {
+            LEN_PAYLOAD = 0;
         }
 
         /*
@@ -71,13 +72,6 @@ namespace gr
         void Build_Input_Frame_impl::create_payload(const char *sentence)
         {
             unsigned short REMAINDER_TO_EIGHT, PADDING_TO_EIGHT; // to pad the payload to a multiple of 8
-
-            LEN_PAYLOAD = strlen(sentence);
-            if (LEN_PAYLOAD > 168)
-                printf("Frame padding disabled. Multiple packets.\n");
-
-            // Free any previous payload memory allocations
-            free(payload);
 
             // IMPORTANT
             REMAINDER_TO_EIGHT = LEN_PAYLOAD % 8;
@@ -371,15 +365,23 @@ namespace gr
                                              gr_vector_void_star &output_items)
         {
             const char *in = (const char *)input_items[0];
-            unsigned char *out = (unsigned char *)output_items[0];
-
-            // create the payload on the fly
-            create_payload(in);
+            unsigned char *out = (unsigned char *)output_items[0];            
+            
+            // check for new inputs to update the advestised payload
+            int inLenPayload = strlen(in);
+            if (inLenPayload > 0) {
+                // Release the memory for any previous messages
+                if(LEN_PAYLOAD > 0) {
+                    free(payload);
+                }
+                // and create a new payload to be transmitted
+                LEN_PAYLOAD = inLenPayload;
+                create_payload(in);
+            }
 
             // stuffing (payload + crc)
             if (LEN_PAYLOAD <= 168)
             {
-
                 char stuffed_payload[LEN_FRAME_MAX];
                 int LEN_STUFFED_PAYLOAD = stuff(payload, stuffed_payload, LEN_PAYLOAD + LEN_CRC);
 
@@ -416,6 +418,7 @@ namespace gr
             }
             else
             {
+                printf("Frame padding disabled. Multiple packets.\n");
 
                 char stuffed_payload[1024];
                 int LEN_STUFFED_PAYLOAD = stuff(payload, stuffed_payload, LEN_PAYLOAD + LEN_CRC);
@@ -453,7 +456,7 @@ namespace gr
             // Do <+signal processing+>
             // Tell runtime system how many input items we consumed on
             // each input stream.
-            consume_each(noutput_items);
+            consume_each(inLenPayload);
 
             // Tell runtime system how many output items we produced.
             return noutput_items;

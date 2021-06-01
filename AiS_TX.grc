@@ -18,7 +18,7 @@ options:
     realtime_scheduling: ''
     run: 'True'
     run_command: '{python} -u {filename}'
-    run_options: prompt
+    run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
     title: ''
@@ -591,6 +591,8 @@ blocks:
     if_gain7: '20'
     if_gain8: '20'
     if_gain9: '20'
+    maxoutbuf: '0'
+    minoutbuf: '0'
     nchan: '1'
     num_mboards: '1'
     sample_rate: samp_rate

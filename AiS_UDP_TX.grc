@@ -48,7 +48,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '1'
+    value: '0'
   states:
     bus_sink: false
     bus_source: false
@@ -98,7 +98,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    enable_NRZI: 'True'
+    enable_NRZI: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
     repeat: 'True'
@@ -115,7 +115,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    enable_NRZI: 'True'
+    enable_NRZI: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
     repeat: 'True'
@@ -342,12 +342,12 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    eof: 'True'
+    eof: 'False'
     ipaddr: 0.0.0.0
     maxoutbuf: '0'
     minoutbuf: '0'
     port: udp_port_1
-    psize: '128'
+    psize: '1024'
     type: byte
     vlen: '1'
   states:
@@ -363,12 +363,12 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    eof: 'True'
+    eof: 'False'
     ipaddr: 0.0.0.0
     maxoutbuf: '0'
     minoutbuf: '0'
     port: udp_port_2
-    psize: '128'
+    psize: '1024'
     type: byte
     vlen: '1'
   states:
