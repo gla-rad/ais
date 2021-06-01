@@ -375,7 +375,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [16, 324.0]
+    coordinate: [8, 324.0]
     rotation: 0
     state: true
 - name: digital_gmsk_mod_0
@@ -416,6 +416,32 @@ blocks:
     coordinate: [464, 348.0]
     rotation: 0
     state: enabled
+- name: note_0
+  id: note
+  parameters:
+    alias: ''
+    comment: ''
+    note: nc -u localhost 8881
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 196.0]
+    rotation: 0
+    state: true
+- name: note_0_0
+  id: note
+  parameters:
+    alias: ''
+    comment: ''
+    note: nc -u localhost 8882
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 420.0]
+    rotation: 0
+    state: true
 - name: osmosdr_sink_0
   id: osmosdr_sink
   parameters:
