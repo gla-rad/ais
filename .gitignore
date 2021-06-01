@@ -3,6 +3,8 @@ top_block.py
 
 # editors
 [._]*.sw[a-p]
+.vscode
 
 # build dirs
+build
 **/build/
