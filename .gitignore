@@ -1,0 +1,8 @@
+# top block
+top_block.py
+
+# editors
+[._]*.sw[a-p]
+
+# build dirs
+**/build/

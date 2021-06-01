@@ -25,6 +25,8 @@ include(GrPlatform) #define LIB_SUFFIX
 
 list(APPEND AISTX_sources
     Build_Frame_impl.cc
+    DebugME_impl.cc
+    nrz_to_nrzi_impl.cc
 )
 
 set(AISTX_sources "${AISTX_sources}" PARENT_SCOPE)

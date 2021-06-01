@@ -274,6 +274,23 @@ blocks:
     coordinate: [458, 364]
     rotation: 0
     state: enabled
+- name: blocks_null_sink_0
+  id: blocks_null_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    bus_structure_sink: '[[0,],]'
+    comment: ''
+    num_inputs: '1'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1292, 245]
+    rotation: 0
+    state: true
 - name: blocks_selector_0
   id: blocks_selector
   parameters:
@@ -885,6 +902,7 @@ connections:
 - [blocks_multiply_xx_0, '0', blocks_multiply_const_vxx_0_1, '0']
 - [blocks_multiply_xx_0_0, '0', blocks_multiply_const_vxx_0_0, '0']
 - [blocks_multiply_xx_0_0, '0', blocks_multiply_const_vxx_0_1_0, '0']
+- [blocks_selector_0, '0', blocks_null_sink_0, '0']
 - [blocks_selector_0, '0', osmosdr_sink_0, '0']
 - [blocks_selector_0, '0', uhd_usrp_sink_0, '0']
 - [digital_gmsk_mod_0, '0', blocks_multiply_xx_0, '0']

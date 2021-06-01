@@ -9,7 +9,13 @@
 
 %{
 #include "AISTX/Build_Frame.h"
+#include "AISTX/DebugME.h"
+#include "AISTX/nrz_to_nrzi.h"
 %}
 
 %include "AISTX/Build_Frame.h"
 GR_SWIG_BLOCK_MAGIC2(AISTX, Build_Frame);
+%include "AISTX/DebugME.h"
+GR_SWIG_BLOCK_MAGIC2(AISTX, DebugME);
+%include "AISTX/nrz_to_nrzi.h"
+GR_SWIG_BLOCK_MAGIC2(AISTX, nrz_to_nrzi);

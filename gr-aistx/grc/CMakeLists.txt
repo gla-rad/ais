@@ -19,5 +19,7 @@
 # Boston, MA 02110-1301, USA.
 
 install(FILES
-    AISTX_Build_Frame.block.yml DESTINATION share/gnuradio/grc/blocks
+    AISTX_Build_Frame.block.yml
+    AISTX_DebugME.block.yml
+    AISTX_nrz_to_nrzi.block.yml DESTINATION share/gnuradio/grc/blocks
 )
