@@ -26,6 +26,13 @@ $ sudo apt install graphviz
 $ sudo apt install libboost-all-dev
 $ sudo apt install liborc-0.4-dev
 
+On some systems the installation directory of the python3 modules will be at
+the '''lib/python3/dist-packages''' which might not be picked up by python3.
+To resolve this a quick hack it to link it to your current python installation
+with something like:
+
+$ sudo ln -s /usr/local/lib/python3/dist-packages/AISTX /usr/local/lib/python3.8/dist-packages/AISTX
+
 Copyright 2013-2014 -- Embyte & Pastus
 
 This program is free software; you can redistribute it and/or

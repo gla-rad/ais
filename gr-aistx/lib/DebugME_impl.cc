@@ -44,7 +44,7 @@ namespace gr
             : gr::block("DebugME",
                         gr::io_signature::make(1, 1, itemsize),
                         gr::io_signature::make(0, 0, 0)),
-                        d_itemsize(itemsize)
+              d_itemsize(itemsize)
         {
         }
 

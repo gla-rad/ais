@@ -25,5 +25,6 @@ install(FILES
     api.h
     Build_Frame.h
     DebugME.h
-    nrz_to_nrzi.h DESTINATION include/AISTX
+    nrz_to_nrzi.h
+    Build_Input_Frame.h DESTINATION include/AISTX
 )

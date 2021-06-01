@@ -21,5 +21,6 @@
 install(FILES
     AISTX_Build_Frame.block.yml
     AISTX_DebugME.block.yml
-    AISTX_nrz_to_nrzi.block.yml DESTINATION share/gnuradio/grc/blocks
+    AISTX_nrz_to_nrzi.block.yml
+    AISTX_Build_Input_Frame.block.yml DESTINATION share/gnuradio/grc/blocks
 )
