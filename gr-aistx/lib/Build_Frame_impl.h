@@ -33,14 +33,14 @@ namespace gr
         private:
             bool d_repeat;
             bool d_enable_NRZI;
-            char *payload; // [the 01 representation of the sentence as taken from input]
-            unsigned short LEN_SENTENCE;
-            unsigned short LEN_PAYLOAD;
+            char *d_payload; // [the 01 representation of the sentence as taken from input]
+            unsigned short d_len_payload;
 
         public:
             Build_Frame_impl(const char *sentence, bool repeat, bool enable_NRZI);
             ~Build_Frame_impl();
 
+            void create_payload(const char *sentence);
             void dump_buffer(const char *b, int buffer_size);
             char *int2bin(int a, char *buffer, int buf_size);
             int stuff(const char *in, char *out, int l_in);

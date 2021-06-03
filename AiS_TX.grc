@@ -48,7 +48,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '0'
+    value: '2'
   states:
     bus_sink: false
     bus_source: false
@@ -78,12 +78,12 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     repeat: 'True'
-    sentence: '01010100000111010110111100110100010101101010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001100101101001010100000111011010011000010000001000000000000000000000000000000000001111000000000000000'
+    sentence: sentence0
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [0, 97]
+    coordinate: [3, 113]
     rotation: 0
     state: enabled
 - name: AISTX_Build_Frame_1
@@ -96,12 +96,12 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     repeat: 'True'
-    sentence: '01010100000111010110111100110100010101101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001100101101001010100000111011010011000010000001000000000000000000000000000000000001111000000000000000'
+    sentence: sentence1
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [0, 316]
+    coordinate: [2, 336]
     rotation: 0
     state: enabled
 - name: analog_sig_source_x_0
@@ -163,7 +163,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [803, 212]
+    coordinate: [803, 252]
     rotation: 0
     state: enabled
 - name: blocks_multiply_const_vxx_0
@@ -181,7 +181,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [611, 208]
+    coordinate: [607, 237]
     rotation: 0
     state: enabled
 - name: blocks_multiply_const_vxx_0_0
@@ -199,7 +199,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [605, 301]
+    coordinate: [608, 299]
     rotation: 0
     state: enabled
 - name: blocks_multiply_const_vxx_0_1
@@ -274,23 +274,6 @@ blocks:
     coordinate: [458, 364]
     rotation: 0
     state: enabled
-- name: blocks_null_sink_0
-  id: blocks_null_sink
-  parameters:
-    affinity: ''
-    alias: ''
-    bus_structure_sink: '[[0,],]'
-    comment: ''
-    num_inputs: '1'
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1292, 245]
-    rotation: 0
-    state: true
 - name: blocks_selector_0
   id: blocks_selector
   parameters:
@@ -311,7 +294,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [986, 195]
+    coordinate: [964, 164]
     rotation: 0
     state: true
 - name: digital_gmsk_mod_0
@@ -608,9 +591,43 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1234, 117]
+    coordinate: [1247, 34]
     rotation: 0
     state: disabled
+- name: sentence0
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: Sentence 0
+    short_id: s
+    type: str
+    value: '010101000001110101101111001101000101011100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010110111111010010100001110110111001011110111000000000000000000000000000000000000011110000000000000000000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [486, 5]
+    rotation: 0
+    state: true
+- name: sentence1
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: Sentence 1
+    short_id: d
+    type: str
+    value: '000001000011010011111011010111100011101111100000000000010100000000000101100010011111100000011101110100110011010010001101110111101111111111001100000000000000000000000000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [668, 6]
+    rotation: 0
+    state: true
 - name: uhd_usrp_sink_0
   id: uhd_usrp_sink
   parameters:
@@ -680,7 +697,7 @@ blocks:
     bw7: '0'
     bw8: '0'
     bw9: '0'
-    center_freq0: uhd.tune_request_t(162000000, 19000000)
+    center_freq0: uhd.tune_request_t(162000000, 25000)
     center_freq1: '0'
     center_freq10: '0'
     center_freq11: '0'
@@ -724,7 +741,7 @@ blocks:
     comment: ''
     dev_addr: ''
     dev_args: '""'
-    gain0: '0'
+    gain0: '10'
     gain1: '0'
     gain10: '0'
     gain11: '0'
@@ -870,7 +887,7 @@ blocks:
     show_lo_controls: 'False'
     stream_args: ''
     stream_chans: '[]'
-    sync: sync
+    sync: pc_clock
     time_source0: ''
     time_source1: gpsdo
     time_source2: ''
@@ -884,25 +901,24 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1281, 315]
+    coordinate: [1252, 274]
     rotation: 0
-    state: disabled
+    state: enabled
 
 connections:
 - [AISTX_Build_Frame_0, '0', digital_gmsk_mod_0, '0']
 - [AISTX_Build_Frame_1, '0', digital_gmsk_mod_0_0, '0']
 - [analog_sig_source_x_0, '0', blocks_multiply_xx_0, '1']
 - [analog_sig_source_x_0_0, '0', blocks_multiply_xx_0_0, '1']
-- [blocks_add_xx_0, '0', blocks_selector_0, '0']
+- [blocks_add_xx_0, '0', blocks_selector_0, '2']
 - [blocks_multiply_const_vxx_0, '0', blocks_add_xx_0, '0']
 - [blocks_multiply_const_vxx_0_0, '0', blocks_add_xx_0, '1']
-- [blocks_multiply_const_vxx_0_1, '0', blocks_selector_0, '1']
-- [blocks_multiply_const_vxx_0_1_0, '0', blocks_selector_0, '2']
+- [blocks_multiply_const_vxx_0_1, '0', blocks_selector_0, '0']
+- [blocks_multiply_const_vxx_0_1_0, '0', blocks_selector_0, '1']
 - [blocks_multiply_xx_0, '0', blocks_multiply_const_vxx_0, '0']
 - [blocks_multiply_xx_0, '0', blocks_multiply_const_vxx_0_1, '0']
 - [blocks_multiply_xx_0_0, '0', blocks_multiply_const_vxx_0_0, '0']
 - [blocks_multiply_xx_0_0, '0', blocks_multiply_const_vxx_0_1_0, '0']
-- [blocks_selector_0, '0', blocks_null_sink_0, '0']
 - [blocks_selector_0, '0', osmosdr_sink_0, '0']
 - [blocks_selector_0, '0', uhd_usrp_sink_0, '0']
 - [digital_gmsk_mod_0, '0', blocks_multiply_xx_0, '0']
