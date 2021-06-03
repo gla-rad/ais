@@ -60,47 +60,53 @@ namespace gr
               d_repeat(repeat),
               d_enable_NRZI(enable_NRZI)
         {
+            // copy the sentence parameter to be used later on
+            create_payload(sentence);
+        }
+
+        void Build_Frame_impl::create_payload(const char *sentence)
+        {
             unsigned short REMAINDER_TO_EIGHT, PADDING_TO_EIGHT; // to pad the payload to a multiple of 8
 
-            LEN_PAYLOAD = strlen(sentence);
-            if (LEN_PAYLOAD > 168)
+            d_len_payload = strlen(sentence);
+            if (d_len_payload > 168)
                 printf("Frame padding disabled. Multiple packets.\n");
 
             // IMPORTANT
-            REMAINDER_TO_EIGHT = LEN_PAYLOAD % 8;
+            REMAINDER_TO_EIGHT = d_len_payload % 8;
             if (REMAINDER_TO_EIGHT == 0)
             {
-                payload = (char *)malloc(LEN_PAYLOAD + LEN_CRC);
+                d_payload = (char *)malloc(d_len_payload + LEN_CRC);
                 // nb. It comes in in ASCII
-                for (int i = 0; i < LEN_PAYLOAD; i++)
-                    payload[i] = sentence[i] - 48;
+                for (int i = 0; i < d_len_payload; i++)
+                    d_payload[i] = sentence[i] - 48;
             }
             else if (REMAINDER_TO_EIGHT > 0)
             {
 
                 PADDING_TO_EIGHT = 8 - REMAINDER_TO_EIGHT;
-                payload = (char *)malloc(LEN_PAYLOAD + PADDING_TO_EIGHT + LEN_CRC);
+                d_payload = (char *)malloc(d_len_payload + PADDING_TO_EIGHT + LEN_CRC);
 
-                for (int i = 0; i < LEN_PAYLOAD; i++)
-                    payload[i] = sentence[i] - 48;
+                for (int i = 0; i < d_len_payload; i++)
+                    d_payload[i] = sentence[i] - 48;
 
-                printf("Detected a payload which is *not* multiple of 8 (%d bits). Padding with %d bits to %d\n", LEN_PAYLOAD, PADDING_TO_EIGHT, LEN_PAYLOAD + PADDING_TO_EIGHT);
-                memset(payload + LEN_PAYLOAD, 0x0, PADDING_TO_EIGHT);
+                // printf("Detected a payload which is *not* multiple of 8 (%d bits). Padding with %d bits to %d\n", d_len_payload, PADDING_TO_EIGHT, d_len_payload + PADDING_TO_EIGHT);
+                memset(d_payload + d_len_payload, 0x0, PADDING_TO_EIGHT);
 
-                LEN_PAYLOAD += PADDING_TO_EIGHT; // update PAYLOAD LENGHT
+                d_len_payload += PADDING_TO_EIGHT; // update PAYLOAD LENGHT
             }
 
-            dump_buffer(payload, LEN_PAYLOAD);
+            dump_buffer(d_payload, d_len_payload);
 
             // crc
             char crc[16]; // 2 gnuradio bytes of CRC
-            char input_crc[LEN_PAYLOAD];
-            memcpy(input_crc, payload, LEN_PAYLOAD);
-            compute_crc(input_crc, crc, LEN_PAYLOAD);
-            memcpy(payload + LEN_PAYLOAD, crc, LEN_CRC);
+            char input_crc[d_len_payload];
+            memcpy(input_crc, d_payload, d_len_payload);
+            compute_crc(input_crc, crc, d_len_payload);
+            memcpy(d_payload + d_len_payload, crc, LEN_CRC);
 
             // reverse
-            reverse_bit_order(payload, LEN_PAYLOAD + LEN_CRC);
+            reverse_bit_order(d_payload, d_len_payload + LEN_CRC);
         }
 
         /*
@@ -358,13 +364,13 @@ namespace gr
                                gr_vector_void_star &output_items)
         {
             unsigned char *out = (unsigned char *)output_items[0];
-
+   
             // stuffing (payload + crc)
-            if (LEN_PAYLOAD <= 168)
+            if (d_len_payload <= 168)
             {
 
                 char stuffed_payload[LEN_FRAME_MAX];
-                int LEN_STUFFED_PAYLOAD = stuff(payload, stuffed_payload, LEN_PAYLOAD + LEN_CRC);
+                int LEN_STUFFED_PAYLOAD = stuff(d_payload, stuffed_payload, d_len_payload + LEN_CRC);
 
                 //// frame generation /////
                 char frame[LEN_FRAME_MAX];
@@ -401,7 +407,7 @@ namespace gr
             {
 
                 char stuffed_payload[1024];
-                int LEN_STUFFED_PAYLOAD = stuff(payload, stuffed_payload, LEN_PAYLOAD + LEN_CRC);
+                int LEN_STUFFED_PAYLOAD = stuff(d_payload, stuffed_payload, d_len_payload + LEN_CRC);
 
                 //// frame generation /////
                 int LEN_FRAME = LEN_PREAMBLE + LEN_START * 2 + LEN_STUFFED_PAYLOAD;
@@ -440,7 +446,7 @@ namespace gr
             // int r = (int) rand() % 1000;
             // usleep(1000*r);	// -6
             // sleep(1);
-            usleep(100000);
+            usleep(25000); // Forn USRPs we need to be under the 26666 AIS time slot
 
             // Tell runtime system how many output items we produced.
             return noutput_items;
