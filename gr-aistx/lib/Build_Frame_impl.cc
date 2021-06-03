@@ -315,7 +315,7 @@ namespace gr
                 crc = (crc >> 8) ^ crc_itu16_table[(crc ^ data[i]) & 0xFF];
 
             crc = (crc & 0xFFFF) ^ 0xFFFF;
-            // printf("%X\n", crc);
+            //		printf("%X\n", crc);
 
             int2bin(crc, ret, 16);
             // printf ("CRC ASCII1 = %s\n", ret);
@@ -333,8 +333,8 @@ namespace gr
                 ret[j] = ret[j] - 0x30;
 
             // if (DEBUG) {
-            //  printf("CRC 2=\n");
-            //  dump_buffer(ret,16);
+            //     printf("CRC 2=\n");
+            //     dump_buffer(ret,16);
             // }
         }
 
@@ -386,9 +386,9 @@ namespace gr
 
                 // NRZI Conversion
                 nrz_to_nrzi(frame, len_frame_real);
-                printf("Sent Frame (NRZI enabled) = ");
+                // printf ("Sent Frame (NRZI enabled) = ");
 
-                dump_buffer(frame, len_frame_real);
+                // dump_buffer(frame, len_frame_real);
 
                 // Binary conversion (to use with GMSK mod's byte_to_symb
                 byte_packing(frame, byte_frame, len_frame_real);
@@ -405,6 +405,9 @@ namespace gr
 
                 //// frame generation /////
                 int LEN_FRAME = LEN_PREAMBLE + LEN_START * 2 + LEN_STUFFED_PAYLOAD;
+                //Make len_frame even
+                while (LEN_FRAME % 8 != 0)
+                    LEN_FRAME++;
                 char frame[LEN_FRAME];
                 unsigned char byte_frame[LEN_FRAME / 8]; //PASTA
                 memset(frame, 0x0, LEN_FRAME);
@@ -421,9 +424,9 @@ namespace gr
 
                 // NRZI Conversion
                 nrz_to_nrzi(frame, len_frame_real);
-                printf("Sent Frame (NRZI enabled) = ");
+                // printf ("Sent Frame (NRZI enabled) = ");
 
-                dump_buffer(frame, len_frame_real);
+                // dump_buffer(frame, len_frame_real);
 
                 // Binary conversion (to use with GMSK mod's byte_to_symb
                 byte_packing(frame, byte_frame, len_frame_real);
@@ -434,6 +437,9 @@ namespace gr
             }
 
             // some sleep here
+            // int r = (int) rand() % 1000;
+            // usleep(1000*r);	// -6
+            // sleep(1);
             usleep(100000);
 
             // Tell runtime system how many output items we produced.
