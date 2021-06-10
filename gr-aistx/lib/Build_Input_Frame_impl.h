@@ -34,7 +34,7 @@ namespace gr
             bool d_repeat;
             bool d_enable_NRZI;
             char *payload; // [the 01 representation of the sentence as taken from input]
-            unsigned short LEN_PAYLOAD;
+            unsigned short d_len_payload;
 
         public:
             Build_Input_Frame_impl(bool repeat, bool enable_NRZI);
