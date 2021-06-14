@@ -200,8 +200,8 @@ def encode_21(__mmsi, __aid_type, __aid_name, __long, __lat, __vsize, __virtual)
 	(_long, _lat) = compute_long_lat(__long, __lat)
 
 	if not __virtual:
-		_hl = int(__vsize[:__vsize.find("x")])/2		# AIS antenna in the middle
-		_hw = int(__vsize[__vsize.find("x")+1:])/2
+		_hl = int(float(__vsize[:__vsize.find("x")])/2)		# AIS antenna in the middle
+		_hw = int(float(__vsize[__vsize.find("x")+1:])/2)
 		_half_length = '{0:b}'.format(_hl).rjust(9,'0')
 		_half_width = '{0:b}'.format(_hw).rjust(6,'0')
 	else:
@@ -372,8 +372,7 @@ def main():
 		payload = encode_18(int(options.mmsi), float(options.speed), float(options.long), float(options.lat), float(options.course), int(options.ts))
 
 	elif options.type == "21":
-		__virtual = '1' if options.v_AtoN else '0'
-		payload = encode_21(int(options.mmsi), int(options.aid_type), options.aid_name, float(options.long), float(options.lat), options.vsize, __virtual)
+		payload = encode_21(int(options.mmsi), int(options.aid_type), options.aid_name, float(options.long), float(options.lat), options.vsize, options.v_AtoN != None)
 
 	elif options.type == "22":
 		payload = encode_22(int(options.mmsi), int(options.channel_a), int(options.channel_b), float(options.ne_lon), float(options.ne_lat), float(options.sw_lon), float(options.sw_lat))

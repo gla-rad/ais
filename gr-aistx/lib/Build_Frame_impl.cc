@@ -446,7 +446,7 @@ namespace gr
             // int r = (int) rand() % 1000;
             // usleep(1000*r);	// -6
             // sleep(1);
-            usleep(25000); // Forn USRPs we need to be under the 26666 AIS time slot
+            usleep(25000); // For USRPs we need to be under the 26666 AIS time slot
 
             // Tell runtime system how many output items we produced.
             return noutput_items;
