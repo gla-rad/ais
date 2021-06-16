@@ -367,8 +367,13 @@ namespace gr
             const char *in = (const char *)input_items[0];
             unsigned char *out = (unsigned char *)output_items[0];            
             
+            // Put everything a string to split if necessary to identify packets
+            std::string instr(in);
+            size_t pos = instr.find(d_udp_p_delim);
+            const char *in_packet = instr.substr(0, pos != std::string::npos ? pos : instr.length()).c_str();
+
             // check for new inputs to update the advestised payload
-            int inLenPayload = strlen(in);
+            int inLenPayload = strlen(in_packet);
 
             if (inLenPayload > 0) {
                 // Release the memory for any previous messages
@@ -381,7 +386,7 @@ namespace gr
                 if(in[d_len_payload-1] == '\n') {
                     d_len_payload--;
                 }
-                create_payload(in);
+                create_payload(in_packet);
             }
             
             // stuffing (payload + crc)
