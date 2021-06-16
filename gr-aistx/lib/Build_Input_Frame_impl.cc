@@ -372,11 +372,10 @@ namespace gr
 
             // Put everything a string to split if necessary
             std::string instr(in);
-            size_t pos = instr.find(d_udp_p_delim);
-            std::string packetstr;
             printf("Input string: %s", instr.c_str());
+            size_t pos = instr.find(d_udp_p_delim) == std::string::npos ? instr.length() : instr.find(d_udp_p_delim);  
             do {
-                packetstr = instr.substr(0, pos);
+                std::string packetstr = instr.substr(0, pos);
                 printf("Parsed Packet: %s", packetstr.c_str());
                 instr.erase(0, pos + d_udp_p_delim.length());
                 const char* packet = packetstr.c_str();
