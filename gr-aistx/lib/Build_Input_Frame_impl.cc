@@ -374,9 +374,10 @@ namespace gr
             std::string instr(in);
             printf("Input string: %s", instr.c_str());
             size_t pos = 0;  
-            while ((pos = instr.find(d_udp_p_delim)) != std::string::npos || instr.length() > 0) {
-                std::string packetstr = instr.substr(0, pos == std::string::npos ? instr.length() : pos);
-                printf("Parsed Packet: %s", packetstr.c_str());
+            noutput_items = 0;
+            while ((pos = instr.find(d_udp_p_delim)) != std::string::npos) {
+                std::string packetstr = instr.substr(0, pos);
+                printf("Parsed Packet: %s\n", packetstr.c_str());
                 instr.erase(0, pos + d_udp_p_delim.length());
                 const char* packet = packetstr.c_str();
                 int inPacketLenPayload = strlen(packet);
@@ -469,7 +470,7 @@ namespace gr
 
                     // output
                     memcpy(out, byte_frame, len_frame_real / 8);
-                    noutput_items = len_frame_real / 8;
+                    noutput_items += len_frame_real / 8;
                 }
 
                 // For USRPs we need to be under the 26666 AIS time slot
