@@ -374,10 +374,10 @@ namespace gr
             std::string instr(in);
             size_t pos = 0;
             std::string packetstr;
-            std::cout << instr << std::endl;
+            printf("Input string: %s", instr.c_str());
             while ((pos = instr.find(d_udp_p_delim)) != std::string::npos) {
-                packetstr = instr.substr(0, pos).c_str();
-                std::cout << packetstr << std::endl;
+                packetstr = instr.substr(0, pos);
+                printf("Parsed Packet: %s", packetstr.c_str());
                 instr.erase(0, pos + d_udp_p_delim.length());
                 const char* packet = packetstr.c_str();
                 int inPacketLenPayload = strlen(packet);
