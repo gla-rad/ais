@@ -367,11 +367,13 @@ namespace gr
             const char *in = (const char *)input_items[0];
             unsigned char *out = (unsigned char *)output_items[0];            
             
-            // Put everything a string to split if necessary to identify packets
+            // put everything a string to split if necessary to identify packets
             std::string instr(in);
             size_t pos = instr.find(d_udp_p_delim);
             const char *in_packet = instr.substr(0, pos != std::string::npos ? pos : instr.length()).c_str();
-
+            std::string in_packetstr(in);
+            printf("%s\n", in_packetstr);
+            
             // check for new inputs to update the advestised payload
             int inLenPayload = strlen(in_packet);
 
@@ -470,6 +472,9 @@ namespace gr
             // Tell runtime system how many input items we consumed on
             // each input stream.
             consume_each(inLenPayload);
+
+            // For USRPs we need to be under the 26666 AIS time slot
+            usleep(25000); 
 
             // Tell runtime system how many output items we produced.
             return noutput_items;
