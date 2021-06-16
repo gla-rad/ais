@@ -373,11 +373,14 @@ namespace gr
             // Put everything a string to split if necessary
             std::string instr(in);
             size_t pos = 0;
-            const char * packet;
+            std::string packetstr;
+            std::cout << instr << std::endl;
             while ((pos = instr.find(d_udp_p_delim)) != std::string::npos) {
-                packet = instr.substr(0, pos).c_str();
+                packetstr = instr.substr(0, pos).c_str();
+                std::cout << packetstr << std::endl;
                 instr.erase(0, pos + d_udp_p_delim.length());
-                int inPacketLenPayload = strlen(in);
+                const char* packet = packetstr.c_str();
+                int inPacketLenPayload = strlen(packet);
 
                 if (inPacketLenPayload > 0) {
                     // Release the memory for any previous messages
