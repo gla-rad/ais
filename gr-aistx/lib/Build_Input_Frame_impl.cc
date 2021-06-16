@@ -387,10 +387,10 @@ namespace gr
                     // and create a new payload to be transmitted
                     d_len_payload = inPacketLenPayload;
                     // check is the last bit is an EOF
-                    if(in[d_len_payload-1] == '\n') {
+                    if(packet[d_len_payload-1] == '\n') {
                         d_len_payload--;
                     }
-                    create_payload(in);
+                    create_payload(packet);
                 }
                 
                 // stuffing (payload + crc)
