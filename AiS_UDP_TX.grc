@@ -224,42 +224,6 @@ blocks:
     coordinate: [824, 324.0]
     rotation: 0
     state: enabled
-- name: blocks_multiply_const_vxx_0_1
-  id: blocks_multiply_const_vxx
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    const: '0.9'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [860, 172]
-    rotation: 0
-    state: enabled
-- name: blocks_multiply_const_vxx_0_1_0
-  id: blocks_multiply_const_vxx
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    const: '0.9'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [920, 404.0]
-    rotation: 0
-    state: enabled
 - name: blocks_multiply_xx_0
   id: blocks_multiply_xx
   parameters:
@@ -313,29 +277,6 @@ blocks:
     coordinate: [1384, 304.0]
     rotation: 0
     state: disabled
-- name: blocks_selector_0
-  id: blocks_selector
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    enabled: 'True'
-    input_index: channel_select
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    num_inputs: '3'
-    num_outputs: '1'
-    output_index: '0'
-    showports: 'True'
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1160, 232.0]
-    rotation: 0
-    state: true
 - name: blocks_udp_source_0
   id: blocks_udp_source
   parameters:
@@ -985,18 +926,13 @@ connections:
 - [AISTX_Build_Input_Frame_0_0, '0', digital_gmsk_mod_0_0, '0']
 - [analog_sig_source_x_0, '0', blocks_multiply_xx_0, '1']
 - [analog_sig_source_x_0_0, '0', blocks_multiply_xx_0_0, '1']
-- [blocks_add_xx_0, '0', blocks_selector_0, '2']
+- [blocks_add_xx_0, '0', blocks_null_sink_0, '0']
+- [blocks_add_xx_0, '0', osmosdr_sink_0, '0']
+- [blocks_add_xx_0, '0', uhd_usrp_sink_0, '0']
 - [blocks_multiply_const_vxx_0, '0', blocks_add_xx_0, '0']
 - [blocks_multiply_const_vxx_0_0, '0', blocks_add_xx_0, '1']
-- [blocks_multiply_const_vxx_0_1, '0', blocks_selector_0, '0']
-- [blocks_multiply_const_vxx_0_1_0, '0', blocks_selector_0, '1']
 - [blocks_multiply_xx_0, '0', blocks_multiply_const_vxx_0, '0']
-- [blocks_multiply_xx_0, '0', blocks_multiply_const_vxx_0_1, '0']
 - [blocks_multiply_xx_0_0, '0', blocks_multiply_const_vxx_0_0, '0']
-- [blocks_multiply_xx_0_0, '0', blocks_multiply_const_vxx_0_1_0, '0']
-- [blocks_selector_0, '0', blocks_null_sink_0, '0']
-- [blocks_selector_0, '0', osmosdr_sink_0, '0']
-- [blocks_selector_0, '0', uhd_usrp_sink_0, '0']
 - [blocks_udp_source_0, '0', AISTX_Build_Input_Frame_0, '0']
 - [blocks_udp_source_0_0, '0', AISTX_Build_Input_Frame_0_0, '0']
 - [digital_gmsk_mod_0, '0', blocks_multiply_xx_0, '0']
