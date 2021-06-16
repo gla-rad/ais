@@ -35,7 +35,7 @@ namespace gr
             bool d_enable_NRZI;
             char *payload; // [the 01 representation of the sentence as taken from input]
             unsigned short d_len_payload;
-
+            std::string d_udp_p_delim = "\n";
         public:
             Build_Input_Frame_impl(bool repeat, bool enable_NRZI);
             ~Build_Input_Frame_impl();

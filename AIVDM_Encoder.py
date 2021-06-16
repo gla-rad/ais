@@ -192,8 +192,7 @@ def encode_21(__mmsi, __aid_type, __aid_name, __long, __lat, __vsize, __virtual)
 		else:
 			_name = encode_string(__aid_name[:20])
 			_name_ext =  encode_string(__aid_name[20:])
-			_name_ext += ''.rjust(len(_name_ext) % 8, '0')
-			print(_name_ext)
+			_name_ext += ''.rjust(len(_name_ext) % 6, '0')
 
 	_accurancy = '0'
 

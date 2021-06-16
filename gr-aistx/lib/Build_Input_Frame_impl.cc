@@ -370,96 +370,110 @@ namespace gr
             // check for new inputs to update the advestised payload
             int inLenPayload = strlen(in);
 
-            if (inLenPayload > 0) {
-                // Release the memory for any previous messages
-                if(d_len_payload > 0) {
-                    free(payload);
+            // Put everything a string to split if necessary
+            std::string instr(in);
+            size_t pos = 0;
+            const char * packet;
+            while ((pos = instr.find(d_udp_p_delim)) != std::string::npos) {
+                packet = instr.substr(0, pos).c_str();
+                instr.erase(0, pos + d_udp_p_delim.length());
+                int inPacketLenPayload = strlen(in);
+
+                if (inPacketLenPayload > 0) {
+                    // Release the memory for any previous messages
+                    if(d_len_payload > 0) {
+                        free(payload);
+                    }
+                    // and create a new payload to be transmitted
+                    d_len_payload = inPacketLenPayload;
+                    // check is the last bit is an EOF
+                    if(in[d_len_payload-1] == '\n') {
+                        d_len_payload--;
+                    }
+                    create_payload(in);
                 }
-                // and create a new payload to be transmitted
-                d_len_payload = inLenPayload;
-                // check is the last bit is an EOF
-                if(in[d_len_payload-1] == '\n') {
-                    d_len_payload--;
+                
+                // stuffing (payload + crc)
+                if (d_len_payload <= 168)
+                {
+                    char stuffed_payload[LEN_FRAME_MAX];
+                    int LEN_STUFFED_PAYLOAD = stuff(payload, stuffed_payload, d_len_payload + LEN_CRC);
+
+                    //// frame generation /////
+                    char frame[LEN_FRAME_MAX];
+                    unsigned char byte_frame[LEN_FRAME_MAX / 8]; //PASTA
+                    memset(frame, 0x0, LEN_FRAME_MAX);
+
+                    // headers
+                    memcpy(frame, "\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0", LEN_PREAMBLE);
+                    memcpy(frame + LEN_PREAMBLE, "\0\1\1\1\1\1\1\0", LEN_START);
+                    // payload + crc
+                    memcpy(frame + LEN_PREAMBLE + LEN_START, stuffed_payload, LEN_STUFFED_PAYLOAD);
+                    // trailer
+                    memcpy(frame + LEN_PREAMBLE + LEN_START + LEN_STUFFED_PAYLOAD, "\0\1\1\1\1\1\1\0", 8);
+
+                    // padding
+                    int LEN_PADDING = LEN_FRAME_MAX - (LEN_PREAMBLE + LEN_START + LEN_STUFFED_PAYLOAD + LEN_START);
+                    memset(frame + LEN_PREAMBLE + LEN_START + LEN_STUFFED_PAYLOAD + LEN_START, 0x0, LEN_PADDING);
+                    int len_frame_real = LEN_FRAME_MAX; // 256
+
+                    // NRZI Conversion
+                    nrz_to_nrzi(frame, len_frame_real);
+                    printf("Sent Frame (NRZI enabled) = ");
+
+                    dump_buffer(frame, len_frame_real);
+
+                    // Binary conversion (to use with GMSK mod's byte_to_symb
+                    byte_packing(frame, byte_frame, len_frame_real);
+
+                    // output
+                    memcpy(out, byte_frame, len_frame_real / 8);
+                    noutput_items = len_frame_real / 8;
                 }
-                create_payload(in);
+                else
+                {
+                    printf("Frame padding disabled. Multiple packets.\n");
+
+                    char stuffed_payload[1024];
+                    int LEN_STUFFED_PAYLOAD = stuff(payload, stuffed_payload, d_len_payload + LEN_CRC);
+
+                    //// frame generation /////
+                    int LEN_FRAME = LEN_PREAMBLE + LEN_START * 2 + LEN_STUFFED_PAYLOAD;
+                    //Make len_frame even
+                    while (LEN_FRAME % 8 != 0)
+                        LEN_FRAME++;
+                    char frame[LEN_FRAME];
+                    unsigned char byte_frame[LEN_FRAME / 8]; //PASTA
+                    memset(frame, 0x0, LEN_FRAME);
+
+                    // headers
+                    memcpy(frame, "\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0", LEN_PREAMBLE);
+                    memcpy(frame + LEN_PREAMBLE, "\0\1\1\1\1\1\1\0", LEN_START);
+                    // payload + crc
+                    memcpy(frame + LEN_PREAMBLE + LEN_START, stuffed_payload, LEN_STUFFED_PAYLOAD);
+                    // trailer
+                    memcpy(frame + LEN_PREAMBLE + LEN_START + LEN_STUFFED_PAYLOAD, "\0\1\1\1\1\1\1\0", 8);
+
+                    int len_frame_real = LEN_FRAME;
+
+                    // NRZI Conversion
+                    nrz_to_nrzi(frame, len_frame_real);
+                    printf("Sent Frame (NRZI enabled) = ");
+
+                    dump_buffer(frame, len_frame_real);
+
+                    // Binary conversion (to use with GMSK mod's byte_to_symb
+                    byte_packing(frame, byte_frame, len_frame_real);
+
+                    // output
+                    memcpy(out, byte_frame, len_frame_real / 8);
+                    noutput_items = len_frame_real / 8;
+                }
+
+                // For USRPs we need to be under the 26666 AIS time slot
+                sleep(25000); 
             }
             
-            // stuffing (payload + crc)
-            if (d_len_payload <= 168)
-            {
-                char stuffed_payload[LEN_FRAME_MAX];
-                int LEN_STUFFED_PAYLOAD = stuff(payload, stuffed_payload, d_len_payload + LEN_CRC);
-
-                //// frame generation /////
-                char frame[LEN_FRAME_MAX];
-                unsigned char byte_frame[LEN_FRAME_MAX / 8]; //PASTA
-                memset(frame, 0x0, LEN_FRAME_MAX);
-
-                // headers
-                memcpy(frame, "\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0", LEN_PREAMBLE);
-                memcpy(frame + LEN_PREAMBLE, "\0\1\1\1\1\1\1\0", LEN_START);
-                // payload + crc
-                memcpy(frame + LEN_PREAMBLE + LEN_START, stuffed_payload, LEN_STUFFED_PAYLOAD);
-                // trailer
-                memcpy(frame + LEN_PREAMBLE + LEN_START + LEN_STUFFED_PAYLOAD, "\0\1\1\1\1\1\1\0", 8);
-
-                // padding
-                int LEN_PADDING = LEN_FRAME_MAX - (LEN_PREAMBLE + LEN_START + LEN_STUFFED_PAYLOAD + LEN_START);
-                memset(frame + LEN_PREAMBLE + LEN_START + LEN_STUFFED_PAYLOAD + LEN_START, 0x0, LEN_PADDING);
-                int len_frame_real = LEN_FRAME_MAX; // 256
-
-                // NRZI Conversion
-                nrz_to_nrzi(frame, len_frame_real);
-                printf("Sent Frame (NRZI enabled) = ");
-
-                dump_buffer(frame, len_frame_real);
-
-                // Binary conversion (to use with GMSK mod's byte_to_symb
-                byte_packing(frame, byte_frame, len_frame_real);
-
-                // output
-                memcpy(out, byte_frame, len_frame_real / 8);
-                noutput_items = len_frame_real / 8;
-            }
-            else
-            {
-                printf("Frame padding disabled. Multiple packets.\n");
-
-                char stuffed_payload[1024];
-                int LEN_STUFFED_PAYLOAD = stuff(payload, stuffed_payload, d_len_payload + LEN_CRC);
-
-                //// frame generation /////
-                int LEN_FRAME = LEN_PREAMBLE + LEN_START * 2 + LEN_STUFFED_PAYLOAD;
-                //Make len_frame even
-                while (LEN_FRAME % 8 != 0)
-                    LEN_FRAME++;
-                char frame[LEN_FRAME];
-                unsigned char byte_frame[LEN_FRAME / 8]; //PASTA
-                memset(frame, 0x0, LEN_FRAME);
-
-                // headers
-                memcpy(frame, "\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0\1\0", LEN_PREAMBLE);
-                memcpy(frame + LEN_PREAMBLE, "\0\1\1\1\1\1\1\0", LEN_START);
-                // payload + crc
-                memcpy(frame + LEN_PREAMBLE + LEN_START, stuffed_payload, LEN_STUFFED_PAYLOAD);
-                // trailer
-                memcpy(frame + LEN_PREAMBLE + LEN_START + LEN_STUFFED_PAYLOAD, "\0\1\1\1\1\1\1\0", 8);
-
-                int len_frame_real = LEN_FRAME;
-
-                // NRZI Conversion
-                nrz_to_nrzi(frame, len_frame_real);
-                printf("Sent Frame (NRZI enabled) = ");
-
-                dump_buffer(frame, len_frame_real);
-
-                // Binary conversion (to use with GMSK mod's byte_to_symb
-                byte_packing(frame, byte_frame, len_frame_real);
-
-                // output
-                memcpy(out, byte_frame, len_frame_real / 8);
-                noutput_items = len_frame_real / 8;
-            }
 
             // Do <+signal processing+>
             // Tell runtime system how many input items we consumed on
