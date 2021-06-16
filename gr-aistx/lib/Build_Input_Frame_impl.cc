@@ -372,10 +372,10 @@ namespace gr
 
             // Put everything a string to split if necessary
             std::string instr(in);
-            size_t pos = 0;
+            size_t pos = instr.find(d_udp_p_delim);
             std::string packetstr;
             printf("Input string: %s", instr.c_str());
-            while ((pos = instr.find(d_udp_p_delim)) != std::string::npos) {
+            do {
                 packetstr = instr.substr(0, pos);
                 printf("Parsed Packet: %s", packetstr.c_str());
                 instr.erase(0, pos + d_udp_p_delim.length());
@@ -475,7 +475,7 @@ namespace gr
 
                 // For USRPs we need to be under the 26666 AIS time slot
                 sleep(25000); 
-            }
+            } while ((pos = instr.find(d_udp_p_delim)) != std::string::npos);
             
 
             // Do <+signal processing+>
