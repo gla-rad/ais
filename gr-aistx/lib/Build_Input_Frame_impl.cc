@@ -369,26 +369,22 @@ namespace gr
             
             // put everything a string to split if necessary to identify packets
             std::string instr(in);
-            size_t pos = instr.find(d_udp_p_delim);
-            const char *in_packet = instr.substr(0, pos != std::string::npos ? pos : instr.length()).c_str();
-            std::string in_packetstr(in);
-            printf("%s\n", in_packetstr);
+            std::size_t l_del_pos = instr.find(d_udp_p_delim);
+            std::string l_packet_str = instr.substr(0, l_del_pos != std::string::npos ? l_del_pos : 0);
             
-            // check for new inputs to update the advestised payload
-            int inLenPayload = strlen(in_packet);
-
-            if (inLenPayload > 0) {
-                // Release the memory for any previous messages
+            // if we received a packet create a payload for it, otherwise skip
+            if (l_packet_str.length() > 0) {
+                // release the memory for any previous messages
                 if(d_len_payload > 0) {
                     free(payload);
                 }
+                // keep the payload size in memory
+                d_len_payload = static_cast<unsigned int>(l_packet_str.length());
                 // and create a new payload to be transmitted
-                d_len_payload = inLenPayload;
-                // check is the last bit is an EOF
-                if(in[d_len_payload-1] == '\n') {
-                    d_len_payload--;
-                }
-                create_payload(in_packet);
+                create_payload(l_packet_str.c_str());
+            } else {
+                consume_each(noutput_items);
+                return noutput_items;
             }
             
             // stuffing (payload + crc)
@@ -428,7 +424,7 @@ namespace gr
                 memcpy(out, byte_frame, len_frame_real / 8);
                 noutput_items = len_frame_real / 8;
             }
-            else
+            else if(d_len_payload > 168)
             {
                 printf("Frame padding disabled. Multiple packets.\n");
 
@@ -437,7 +433,7 @@ namespace gr
 
                 //// frame generation /////
                 int LEN_FRAME = LEN_PREAMBLE + LEN_START * 2 + LEN_STUFFED_PAYLOAD;
-                //Make len_frame even
+                // make len_frame even
                 while (LEN_FRAME % 8 != 0)
                     LEN_FRAME++;
                 char frame[LEN_FRAME];
@@ -471,10 +467,7 @@ namespace gr
             // Do <+signal processing+>
             // Tell runtime system how many input items we consumed on
             // each input stream.
-            consume_each(inLenPayload);
-
-            // For USRPs we need to be under the 26666 AIS time slot
-            usleep(25000); 
+            consume_each(l_packet_str.length() + (l_del_pos != std::string::npos ? 1 : 0));
 
             // Tell runtime system how many output items we produced.
             return noutput_items;
