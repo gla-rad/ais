@@ -870,7 +870,7 @@ blocks:
     sd_spec5: ''
     sd_spec6: ''
     sd_spec7: ''
-    show_lo_controls: 'True'
+    show_lo_controls: 'False'
     stream_args: ''
     stream_chans: '[]'
     sync: sync
@@ -887,7 +887,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1288, 324.0]
+    coordinate: [1288, 332.0]
     rotation: 0
     state: enabled
 
