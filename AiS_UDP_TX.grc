@@ -244,9 +244,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1328, 304.0]
+    coordinate: [1328, 280.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_udp_source_0
   id: blocks_udp_source
   parameters:
@@ -683,7 +683,7 @@ blocks:
     bw7: '0'
     bw8: '0'
     bw9: '0'
-    center_freq0: uhd.tune_request_t(162000000, 25000)
+    center_freq0: uhd.tune_request_t(162000000, -25000)
     center_freq1: uhd.tune_request_t(162000000, 25000)
     center_freq10: '0'
     center_freq11: '0'
@@ -826,7 +826,7 @@ blocks:
     lo_source9: internal
     maxoutbuf: '0'
     minoutbuf: '0'
-    nchan: '1'
+    nchan: '2'
     norm_gain0: 'False'
     norm_gain1: 'False'
     norm_gain10: 'False'
@@ -870,7 +870,7 @@ blocks:
     sd_spec5: ''
     sd_spec6: ''
     sd_spec7: ''
-    show_lo_controls: 'False'
+    show_lo_controls: 'True'
     stream_args: ''
     stream_chans: '[]'
     sync: sync
@@ -887,7 +887,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1288, 380.0]
+    coordinate: [1288, 324.0]
     rotation: 0
     state: enabled
 
@@ -896,10 +896,12 @@ connections:
 - [AISTX_Build_Input_Frame_0_0, '0', digital_gmsk_mod_0_0, '0']
 - [analog_sig_source_x_0, '0', blocks_multiply_xx_0, '1']
 - [analog_sig_source_x_0_0, '0', blocks_multiply_xx_0_0, '1']
+- [blocks_multiply_const_vxx_0_1, '0', blocks_null_sink_0, '0']
 - [blocks_multiply_const_vxx_0_1, '0', osmosdr_sink_0, '0']
 - [blocks_multiply_const_vxx_0_1, '0', uhd_usrp_sink_0, '0']
 - [blocks_multiply_const_vxx_0_1_0, '0', blocks_null_sink_0, '0']
 - [blocks_multiply_const_vxx_0_1_0, '0', osmosdr_sink_0, '1']
+- [blocks_multiply_const_vxx_0_1_0, '0', uhd_usrp_sink_0, '1']
 - [blocks_multiply_xx_0, '0', blocks_multiply_const_vxx_0_1, '0']
 - [blocks_multiply_xx_0_0, '0', blocks_multiply_const_vxx_0_1_0, '0']
 - [blocks_udp_source_0, '0', AISTX_Build_Input_Frame_0, '0']
