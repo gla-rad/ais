@@ -73,7 +73,7 @@ def main():
     """
     from optparse import OptionParser
 
-    desc="""Use this tool validate the AIVDM sentences received through a serial port."""
+    desc="""Use this tool to validate the AIVDM sentences received through a serial port."""
     parser = OptionParser(description=desc)
     parser.add_option("--port", help="The serial port to read the data from", default="/dev/ttyS0")
     parser.add_option("--baud", help="The serial port baud rate", default=38400)
