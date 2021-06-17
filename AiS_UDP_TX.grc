@@ -44,18 +44,6 @@ blocks:
     coordinate: [304, 4.0]
     rotation: 0
     state: enabled
-- name: channel_select
-  id: variable
-  parameters:
-    comment: ''
-    value: '0'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [384, 4.0]
-    rotation: 0
-    state: enabled
 - name: samp_rate
   id: variable
   parameters:
@@ -77,7 +65,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [496, 4.0]
+    coordinate: [384, 4.0]
     rotation: 0
     state: true
 - name: udp_port_2
@@ -89,7 +77,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [592, 4.0]
+    coordinate: [480, 4.0]
     rotation: 0
     state: true
 - name: AISTX_Build_Input_Frame_0
@@ -107,6 +95,23 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [208, 148.0]
+    rotation: 0
+    state: true
+- name: AISTX_Build_Input_Frame_0_0
+  id: AISTX_Build_Input_Frame
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    enable_NRZI: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    repeat: 'True'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [208, 380.0]
     rotation: 0
     state: true
 - name: analog_sig_source_x_0
@@ -131,6 +136,28 @@ blocks:
     coordinate: [464, 188.0]
     rotation: 0
     state: enabled
+- name: analog_sig_source_x_0_0
+  id: analog_sig_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    amp: '1'
+    comment: ''
+    freq: '25000'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    offset: '0'
+    phase: '0'
+    samp_rate: samp_rate
+    type: complex
+    waveform: analog.GR_SIN_WAVE
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [464, 428.0]
+    rotation: 0
+    state: enabled
 - name: blocks_multiply_const_vxx_0_1
   id: blocks_multiply_const_vxx
   parameters:
@@ -147,6 +174,24 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [860, 172]
+    rotation: 0
+    state: enabled
+- name: blocks_multiply_const_vxx_0_1_0
+  id: blocks_multiply_const_vxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    const: '0.9'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [864, 404.0]
     rotation: 0
     state: enabled
 - name: blocks_multiply_xx_0
@@ -167,6 +212,24 @@ blocks:
     coordinate: [680, 160.0]
     rotation: 0
     state: enabled
+- name: blocks_multiply_xx_0_0
+  id: blocks_multiply_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_inputs: '2'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [680, 392.0]
+    rotation: 0
+    state: enabled
 - name: blocks_null_sink_0
   id: blocks_null_sink
   parameters:
@@ -181,32 +244,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1363, 247]
+    coordinate: [1328, 304.0]
     rotation: 0
     state: disabled
-- name: blocks_selector_0
-  id: blocks_selector
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    enabled: 'True'
-    input_index: channel_select
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    num_inputs: '1'
-    num_outputs: '1'
-    output_index: '0'
-    showports: 'True'
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1086, 156]
-    rotation: 0
-    state: true
 - name: blocks_udp_source_0
   id: blocks_udp_source
   parameters:
@@ -228,6 +268,27 @@ blocks:
     coordinate: [8, 100.0]
     rotation: 0
     state: true
+- name: blocks_udp_source_0_0
+  id: blocks_udp_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    eof: 'False'
+    ipaddr: 0.0.0.0
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    port: udp_port_2
+    psize: '1024'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 332.0]
+    rotation: 0
+    state: true
 - name: digital_gmsk_mod_0
   id: digital_gmsk_mod
   parameters:
@@ -247,6 +308,25 @@ blocks:
     coordinate: [464, 116.0]
     rotation: 0
     state: enabled
+- name: digital_gmsk_mod_0_0
+  id: digital_gmsk_mod
+  parameters:
+    affinity: ''
+    alias: ''
+    bt: '0.4'
+    comment: ''
+    log: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samples_per_symbol: int(samp_rate/bit_rate)
+    verbose: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [464, 348.0]
+    rotation: 0
+    state: enabled
 - name: note_0
   id: note
   parameters:
@@ -258,6 +338,19 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [8, 196.0]
+    rotation: 0
+    state: true
+- name: note_0_0
+  id: note
+  parameters:
+    alias: ''
+    comment: ''
+    note: nc -u localhost 8881
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 428.0]
     rotation: 0
     state: true
 - name: osmosdr_sink_0
@@ -501,7 +594,7 @@ blocks:
     if_gain9: '20'
     maxoutbuf: '0'
     minoutbuf: '0'
-    nchan: '1'
+    nchan: '2'
     num_mboards: '1'
     sample_rate: samp_rate
     sync: pc_clock
@@ -518,7 +611,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1339, 34]
+    coordinate: [1264, 12.0]
     rotation: 0
     state: disabled
 - name: uhd_usrp_sink_0
@@ -527,7 +620,7 @@ blocks:
     affinity: ''
     alias: ''
     ant0: TX/RX
-    ant1: ''
+    ant1: TX/RX
     ant10: ''
     ant11: ''
     ant12: ''
@@ -590,8 +683,8 @@ blocks:
     bw7: '0'
     bw8: '0'
     bw9: '0'
-    center_freq0: uhd.tune_request_t(162000000, 25000)
-    center_freq1: '0'
+    center_freq0: uhd.tune_request_t(162000000, -25000)
+    center_freq1: uhd.tune_request_t(162000000, 25000)
     center_freq10: '0'
     center_freq11: '0'
     center_freq12: '0'
@@ -635,7 +728,7 @@ blocks:
     dev_addr: ''
     dev_args: '""'
     gain0: '10'
-    gain1: '0'
+    gain1: '10'
     gain10: '0'
     gain11: '0'
     gain12: '0'
@@ -733,7 +826,7 @@ blocks:
     lo_source9: internal
     maxoutbuf: '0'
     minoutbuf: '0'
-    nchan: '1'
+    nchan: '2'
     norm_gain0: 'False'
     norm_gain1: 'False'
     norm_gain10: 'False'
@@ -794,20 +887,27 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1345, 317]
+    coordinate: [1288, 380.0]
     rotation: 0
     state: enabled
 
 connections:
 - [AISTX_Build_Input_Frame_0, '0', digital_gmsk_mod_0, '0']
+- [AISTX_Build_Input_Frame_0_0, '0', digital_gmsk_mod_0_0, '0']
 - [analog_sig_source_x_0, '0', blocks_multiply_xx_0, '1']
-- [blocks_multiply_const_vxx_0_1, '0', blocks_selector_0, '0']
+- [analog_sig_source_x_0_0, '0', blocks_multiply_xx_0_0, '1']
+- [blocks_multiply_const_vxx_0_1, '0', blocks_null_sink_0, '0']
+- [blocks_multiply_const_vxx_0_1, '0', osmosdr_sink_0, '0']
+- [blocks_multiply_const_vxx_0_1, '0', uhd_usrp_sink_0, '0']
+- [blocks_multiply_const_vxx_0_1_0, '0', blocks_null_sink_0, '0']
+- [blocks_multiply_const_vxx_0_1_0, '0', osmosdr_sink_0, '1']
+- [blocks_multiply_const_vxx_0_1_0, '0', uhd_usrp_sink_0, '1']
 - [blocks_multiply_xx_0, '0', blocks_multiply_const_vxx_0_1, '0']
-- [blocks_selector_0, '0', blocks_null_sink_0, '0']
-- [blocks_selector_0, '0', osmosdr_sink_0, '0']
-- [blocks_selector_0, '0', uhd_usrp_sink_0, '0']
+- [blocks_multiply_xx_0_0, '0', blocks_multiply_const_vxx_0_1_0, '0']
 - [blocks_udp_source_0, '0', AISTX_Build_Input_Frame_0, '0']
+- [blocks_udp_source_0_0, '0', AISTX_Build_Input_Frame_0_0, '0']
 - [digital_gmsk_mod_0, '0', blocks_multiply_xx_0, '0']
+- [digital_gmsk_mod_0_0, '0', blocks_multiply_xx_0_0, '0']
 
 metadata:
   file_format: 1
