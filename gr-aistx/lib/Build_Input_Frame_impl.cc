@@ -469,6 +469,9 @@ namespace gr
             // each input stream.
             consume_each(l_packet_str.length() + (l_del_pos != std::string::npos ? 1 : 0));
 
+            // For USRPs we need to be under the 26666 AIS time slot
+            usleep(25000);
+
             // Tell runtime system how many output items we produced.
             return noutput_items;
         }
