@@ -41,7 +41,7 @@ class SerialThread (threading.Thread):
         and places them to the loaded messages list.
     """
     ais_fields = ['type','mmsi','dest_mmsi','name','aid_type','lat','lon','valid']
-    
+
     def __init__(self, name, ser, screen):
         """
             The Serial Thread Constructor.
@@ -55,21 +55,22 @@ class SerialThread (threading.Thread):
         # Terminal window parameters
         self.counter = 0
         self.max_lines = 40
-        self.max_columns = 180
+        self.max_columns = 120
 
         # lines, columns, start line, start column
-        self.header_window = curses.newwin(8, self.max_columns, 0, 0)
-        self.ais_window = curses.newwin(self.max_lines, self.max_columns, 8, 0)
+        self.header_window = curses.newwin(9, self.max_columns, 0, 0)
+        self.ais_window = curses.newwin(self.max_lines, self.max_columns, 9, 0)
 
         # Initialise the header window
         curses.init_pair(1, curses.COLOR_RED, curses.COLOR_WHITE)
-        self.header_window.addstr(0, 0, self.max_columns*'-', curses.color_pair(1))
-        self.header_window.addstr(1, self.max_columns//2 - 14, "SERIAL AIS MESSAGE VALIDATOR", curses.color_pair(1))
-        self.header_window.addstr(2, self.max_columns//2 - 11, "Monitoring serial port", curses.color_pair(1))
-        self.header_window.addstr(3, 0, self.max_columns*'-', curses.color_pair(1))
-        self.header_window.addstr(5, 0, '|-----------------------------------------------------------------------------------------|')
-        self.header_window.addstr(6, 0, '| Type | Source MMSI | Dest MMSI |   Name   | AID Type | Latitude | Longitude | Validated |')
-        self.header_window.addstr(7, 0, '|-----------------------------------------------------------------------------------------|')
+        self.header_window.addstr(0, 0, self.max_columns*'#')
+        self.header_window.addstr(1, 0, '#' + '© GLA Research & Development Directorate'.center(self.max_columns - 2) + '#')
+        self.header_window.addstr(2, 0, '#' + "SERIAL AIS MESSAGE VALIDATOR".center(self.max_columns - 2) + '#')
+        self.header_window.addstr(3, 0, '#' + f"Currently monitoring serial port {self.ser.port}".center(self.max_columns - 2) + '#')
+        self.header_window.addstr(4, 0, self.max_columns*'#')
+        self.header_window.addstr(6, 0, '|---------------------------------------------------------------------------------------------------------|')
+        self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |      Name      |      AID Type      | Latitude | Longitude | Validated |')
+        self.header_window.addstr(8, 0, '|---------------------------------------------------------------------------------------------------------|')
 
         # Print the window to the screen
         self.screen.clear()
@@ -93,14 +94,20 @@ class SerialThread (threading.Thread):
             The serial port data input handling function. Only AIVDM sentences 
             are allows and for the time being this just prints out the data.
         """
+        # Reset the line counter
+        if self.counter >= self.max_lines:
+            self.counter = 0
+            self.ais_window.clear()
+        # Only plot AIVDM data
         if data.startswith('!AIVDM'):
             try:
                 message = decode_msg(re.sub('\r\n', '', data))
                 for field in self.ais_fields:
                     self.print_ais_field(message, field, self.counter%(self.max_lines-1))
                 self.counter += 1
-            except (UnknownMessageException, InvalidNMEAMessageException) as error:
-                self.ais_window.addstr(self.max_lines-1, 0, str(error))
+            except Exception as error:
+                self.ais_window.addstr(self.max_lines-1, 0, 'Error: ' + str(error))
+        # And update the window
         self.ais_window.refresh()
 
     def print_ais_field(self, message, field, line):
@@ -118,21 +125,21 @@ class SerialThread (threading.Thread):
            length = 9
        elif(field == 'name'):
            start = 33
-           length = 10
+           length = 16
        elif(field == 'aid_type'):
-           start = 39
-           lengt = 8
-       elif(field == 'lat'):
            start = 50
+           length = 18
+       elif(field == 'lat'):
+           start = 71
            length = 8
        elif(field == 'lon'):
-           start = 60
+           start = 82
            length = 9
        else:
-           start = 71
+           start = 94
            length = 9
        value = value[0:length] if len(value) > length else value
-       self.ais_window.addstr(line, start, f'| value')
+       self.ais_window.addstr(line, start, f'| {value:<{length}} |')
 
     def join(self):
         """
@@ -151,7 +158,7 @@ def main(screen):
 
     desc="""Use this tool to validate the AIVDM sentences received through a serial port."""
     parser = OptionParser(description=desc)
-    parser.add_option("--port", help="The serial port to read the data from", default="/dev/ttyS0")
+    parser.add_option("--port", help="The serial port to read the data from", default="/dev/ttyUSB0")
     parser.add_option("--baud", help="The serial port baud rate", default=38400)
 
     # Parse the options
@@ -173,4 +180,4 @@ def main(screen):
 if __name__ == '__main__':
     wrapper(main)
 
-    
+
