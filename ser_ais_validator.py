@@ -29,10 +29,19 @@ import curses
 import re
 import serial
 import json
+import time
 
 from curses import wrapper
 from pyais import NMEAMessage, decode_msg
 from pyais.exceptions import UnknownMessageException, InvalidNMEAMessageException
+
+class MsgEntry:
+    msg: NMEAMessage
+    time: float
+
+    def __init__(self, msg: NMEAMessage, time: float):
+        self.msg = msg
+        self.time = time
 
 class SerialThread (threading.Thread):
     """
@@ -69,9 +78,9 @@ class SerialThread (threading.Thread):
         self.header_window.addstr(2, 0, '#' + "SERIAL AIS MESSAGE VALIDATOR".center(self.max_columns - 2) + '#')
         self.header_window.addstr(3, 0, '#' + f"Currently monitoring serial port {self.ser.port}".center(self.max_columns - 2) + '#')
         self.header_window.addstr(4, 0, self.max_columns*'#')
-        self.header_window.addstr(6, 0, '|---------------------------------------------------------------------------------------------------------|')
-        self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |      Name      |      AID Type      | Latitude | Longitude | Validated |')
-        self.header_window.addstr(8, 0, '|---------------------------------------------------------------------------------------------------------|')
+        self.header_window.addstr(6, 0, '|-----------------------------------------------------------------------------------------------------------------|')
+        self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |      Name      |          AID Type          | Latitude | Longitude | Validated |')
+        self.header_window.addstr(8, 0, '|-----------------------------------------------------------------------------------------------------------------|')
 
         # Print the window to the screen
         self.screen.clear()
@@ -105,15 +114,16 @@ class SerialThread (threading.Thread):
             try:
                 # Decode the message
                 message = decode_msg(re.sub('\r\n', '', data))
-                # If successful and this is not a data message, add the message
-                # into a map, we might need to validate it
+                # Only print the non data messages, cause data might have signatures
                 if message['type'] not in [6, 8]:
-                    self.msgDict[data] = message
-                # Now print the message fields in the dashboard
-                for field in self.ais_fields:
-                    self.print_ais_field(message, field, self.counter%(self.max_lines-1))
-                # And increase the line counter
-                self.counter += 1
+                    # If successful and this is not a data message, add the message
+                    # into a map, we might need to validate it
+                    self.msgDict[data] = MsgEntry(message, int(time.time()))
+                    # Now print the message fields in the dashboard
+                    for field in self.ais_fields:
+                        self.print_ais_field(message, field, self.counter%(self.max_lines-1))
+                    # And increase the line counter
+                    self.counter += 1
             except Exception as error:
                 self.ais_window.addstr(self.max_lines-1, 0, 'Error: ' + str(error))
         # And update the window
@@ -137,15 +147,15 @@ class SerialThread (threading.Thread):
            length = 16
        elif(field == 'aid_type'):
            start = 50
-           length = 18
+           length = 26
        elif(field == 'lat'):
-           start = 71
+           start = 79
            length = 8
        elif(field == 'lon'):
-           start = 82
+           start = 90
            length = 9
        else:
-           start = 94
+           start = 102
            length = 9
        value = value[0:length] if len(value) > length else value
        self.ais_window.addstr(line, start, f'| {value:<{length}} |')
