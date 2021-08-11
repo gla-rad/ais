@@ -51,6 +51,7 @@ class SerialThread (threading.Thread):
         self.ser = ser
         self.die = False
         self.screen = screen
+        self.msgDict = dict()
 
         # Terminal window parameters
         self.counter = 0
@@ -97,13 +98,21 @@ class SerialThread (threading.Thread):
         # Reset the line counter
         if self.counter >= self.max_lines:
             self.counter = 0
+            self.msgDict.clear()
             self.ais_window.clear()
         # Only plot AIVDM data
         if data.startswith('!AIVDM'):
             try:
+                # Decode the message
                 message = decode_msg(re.sub('\r\n', '', data))
+                # If successful and this is not a data message, add the message
+                # into a map, we might need to validate it
+                if message['type'] not in [6, 8]:
+                    self.msgDict[data] = message
+                # Now print the message fields in the dashboard
                 for field in self.ais_fields:
                     self.print_ais_field(message, field, self.counter%(self.max_lines-1))
+                # And increase the line counter
                 self.counter += 1
             except Exception as error:
                 self.ais_window.addstr(self.max_lines-1, 0, 'Error: ' + str(error))
