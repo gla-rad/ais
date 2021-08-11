@@ -51,7 +51,7 @@ class FragmentEntry:
     def __init__(self, id: int, index: int, data: str):
         self.msgId = id
         self.fragmentIndex = index
-        self.data= data
+        self.data = data
 
 
 class SerialThread (threading.Thread):
@@ -140,7 +140,7 @@ class SerialThread (threading.Thread):
                         self.showInfo('A sequence was picked up!')
                         message = NMEAMessage.assemble_from_iterable(
                             messages=list(
-                                map(lambda msg: NMEAMessage(msg.data), self.fragDict[msgId])
+                                map(lambda msg: NMEAMessage(bytes(msg.data, "utf8")), self.fragDict[msgId])
                             )
                         ).decode()
                         # And delete the fragment entry
@@ -161,7 +161,6 @@ class SerialThread (threading.Thread):
                     self.counter += 1
 
             except Exception as error:
-                errorMsg = str(error)
                 self.showError(str(error))
 
         # And update the window
@@ -199,10 +198,10 @@ class SerialThread (threading.Thread):
        self.ais_window.addstr(line, start, f'| {value:<{length}} |')
 
     def showInfo(self, infoMsg):
-        self.ais_window.addstr(self.max_lines-1, 0, 'Info: ' + infoMsg[0:min(self.max_columns,len(infoMsg))-7])
+        self.ais_window.addstr(self.max_lines-1, 0, 'Info: ' + infoMsg[0:min(self.max_columns-7,len(infoMsg))])
 
     def showError(self, errorMsg):
-        self.ais_window.addstr(self.max_lines-1, 0, 'Error: ' + errorMsg[0:min(self.max_columns,len(errorMsg))-8])
+        self.ais_window.addstr(self.max_lines-1, 0, 'Error: ' + errorMsg[0:min(self.max_columns0-8,len(errorMsg))])
 
     def join(self):
         """
