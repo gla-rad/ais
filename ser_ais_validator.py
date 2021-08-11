@@ -124,6 +124,7 @@ class SerialThread (threading.Thread):
         # Only plot AIVDM data
         if data.startswith('!AIVDM'):
             try:
+                message = None
                 # Try to pick up message sequences but checking the fragment count
                 msgParts = data.split(',')
                 sequenceNo = int(msgParts[1])
@@ -132,30 +133,37 @@ class SerialThread (threading.Thread):
                     fragmentId = int(msgParts[2])
                     if msgId not in self.fragDict:
                         self.fragDict[msgId] = []
-                    self.fragDict[msgId].append(FragmentEntry(msgId, fragmentId, data))
+                    self.fragDict[msgId].append(FragmentEntry(msgId, fragmentId, re.sub('\r\n', '', data)))
                     
                     # Note to the user that a sequence was picked up
                     if fragmentId == sequenceNo:
-                        self.ais_window.addstr(self.max_lines-1, 0, 'Info: A sequence was picked up!')
+                        self.showInfo('A sequence was picked up!')
+                        message = NMEAMessage.assemble_from_iterable(
+                            messages=list(
+                                map(lambda msg: NMEAMessage(msg.data), self.fragDict[msgId])
+                            )
+                        ).decode()
                         # And delete the fragment entry
                         del self.fragDict[msgId]
                 else:
                     # Decode the message
                     message = decode_msg(re.sub('\r\n', '', data))
-                    # Only print the non data messages, cause data might have signatures
-                    if message['type'] not in [6, 8]:
-                        # If successful and this is not a data message, add the message
-                        # into a map, we might need to validate it
-                        self.msgDict[data] = MsgEntry(message, int(time.time()))
-                        # Now print the message fields in the dashboard
-                        for field in self.ais_fields:
-                            self.print_ais_field(message, field, self.counter%(self.max_lines-1))
-                        # And increase the line counter
-                        self.counter += 1
+
+                # Only print the non data messages, cause data might have signatures
+                if message: #and message['type'] not in [6, 8]:
+                    # If successful and this is not a data message, add the message
+                    # into a map, we might need to validate it
+                    self.msgDict[data] = MsgEntry(message, int(time.time()))
+                    # Now print the message fields in the dashboard
+                    for field in self.ais_fields:
+                        self.print_ais_field(message, field, self.counter%(self.max_lines-1))
+                    # And increase the line counter
+                    self.counter += 1
 
             except Exception as error:
                 errorMsg = str(error)
-                self.ais_window.addstr(self.max_lines-1, 0, 'Error: ' + errorMsg[0:min(self.max_columns,len(errorMsg))-1])
+                self.showError(str(error))
+
         # And update the window
         self.ais_window.refresh()
 
@@ -189,6 +197,12 @@ class SerialThread (threading.Thread):
            length = 9
        value = value[0:length] if len(value) > length else value
        self.ais_window.addstr(line, start, f'| {value:<{length}} |')
+
+    def showInfo(self, infoMsg):
+        self.ais_window.addstr(self.max_lines-1, 0, 'Info: ' + infoMsg[0:min(self.max_columns,len(infoMsg))-7])
+
+    def showError(self, errorMsg):
+        self.ais_window.addstr(self.max_lines-1, 0, 'Error: ' + errorMsg[0:min(self.max_columns,len(errorMsg))-8])
 
     def join(self):
         """
