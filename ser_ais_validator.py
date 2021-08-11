@@ -43,6 +43,17 @@ class MsgEntry:
         self.msg = msg
         self.time = time
 
+class FragmentEntry:
+    msgId: int
+    fragmentIndex: int
+    data: str
+
+    def __init__(self, id: int, index: int, data: str):
+        self.msgId = id
+        self.fragmentIndex = index
+        self.data= data
+
+
 class SerialThread (threading.Thread):
     """
         The definition of the serial thread that read the data from the 
@@ -61,6 +72,7 @@ class SerialThread (threading.Thread):
         self.die = False
         self.screen = screen
         self.msgDict = dict()
+        self.fragDict = dict()
 
         # Terminal window parameters
         self.counter = 0
@@ -112,20 +124,38 @@ class SerialThread (threading.Thread):
         # Only plot AIVDM data
         if data.startswith('!AIVDM'):
             try:
-                # Decode the message
-                message = decode_msg(re.sub('\r\n', '', data))
-                # Only print the non data messages, cause data might have signatures
-                if message['type'] not in [6, 8]:
-                    # If successful and this is not a data message, add the message
-                    # into a map, we might need to validate it
-                    self.msgDict[data] = MsgEntry(message, int(time.time()))
-                    # Now print the message fields in the dashboard
-                    for field in self.ais_fields:
-                        self.print_ais_field(message, field, self.counter%(self.max_lines-1))
-                    # And increase the line counter
-                    self.counter += 1
+                # Try to pick up message sequences but checking the fragment count
+                msgParts = data.split(',')
+                sequenceNo = int(msgParts[1])
+                if sequenceNo > 1:
+                    msgId = int(msgParts[3])
+                    fragmentId = int(msgParts[2])
+                    if msgId not in self.fragDict:
+                        self.fragDict[msgId] = []
+                    self.fragDict[msgId].append(FragmentEntry(msgId, fragmentId, data))
+                    
+                    # Note to the user that a sequence was picked up
+                    if fragmentId == sequenceNo:
+                        self.ais_window.addstr(self.max_lines-1, 0, 'Info: A sequence was picked up!')
+                        # And delete the fragment entry
+                        del self.fragDict[msgId]
+                else:
+                    # Decode the message
+                    message = decode_msg(re.sub('\r\n', '', data))
+                    # Only print the non data messages, cause data might have signatures
+                    if message['type'] not in [6, 8]:
+                        # If successful and this is not a data message, add the message
+                        # into a map, we might need to validate it
+                        self.msgDict[data] = MsgEntry(message, int(time.time()))
+                        # Now print the message fields in the dashboard
+                        for field in self.ais_fields:
+                            self.print_ais_field(message, field, self.counter%(self.max_lines-1))
+                        # And increase the line counter
+                        self.counter += 1
+
             except Exception as error:
-                self.ais_window.addstr(self.max_lines-1, 0, 'Error: ' + str(error))
+                errorMsg = str(error)
+                self.ais_window.addstr(self.max_lines-1, 0, 'Error: ' + errorMsg[0:min(self.max_columns,len(errorMsg))-1])
         # And update the window
         self.ais_window.refresh()
 
