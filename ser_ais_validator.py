@@ -127,38 +127,45 @@ class SerialThread (threading.Thread):
                 message = None
                 # Try to pick up message sequences but checking the fragment count
                 msgParts = data.split(',')
-                sequenceNo = int(msgParts[1])
-                if sequenceNo > 1:
-                    msgId = int(msgParts[3])
-                    fragmentId = int(msgParts[2])
-                    if msgId not in self.fragDict:
-                        self.fragDict[msgId] = []
-                    self.fragDict[msgId].append(FragmentEntry(msgId, fragmentId, re.sub('\r\n', '', data)))
-                    
-                    # Note to the user that a sequence was picked up
-                    if fragmentId == sequenceNo:
-                        self.showInfo('A sequence was picked up!')
-                        message = NMEAMessage.assemble_from_iterable(
-                            messages=list(
-                                map(lambda msg: NMEAMessage(bytes(msg.data, "utf8")), self.fragDict[msgId])
-                            )
-                        ).decode()
-                        # And delete the fragment entry
-                        del self.fragDict[msgId]
-                else:
-                    # Decode the message
-                    message = decode_msg(re.sub('\r\n', '', data))
 
-                # Only print the non data messages, cause data might have signatures
-                if message: #and message['type'] not in [6, 8]:
-                    # If successful and this is not a data message, add the message
-                    # into a map, we might need to validate it
-                    self.msgDict[data] = MsgEntry(message, int(time.time()))
-                    # Now print the message fields in the dashboard
-                    for field in self.ais_fields:
-                        self.print_ais_field(message, field, self.counter%(self.max_lines-1))
-                    # And increase the line counter
-                    self.counter += 1
+                # NMEA Sentences 
+                if len(msgParts) == 7:
+                    sequenceNo = int(msgParts[1])
+                    if sequenceNo > 1:
+                        msgId = int(msgParts[3])
+                        fragmentId = int(msgParts[2])
+
+                        # Initialise the entry if it does not exist
+                        if msgId not in self.fragDict:
+                            self.fragDict[msgId] = []
+
+                        # Append the received message into the array if it seems OK
+                        self.fragDict[msgId].append(FragmentEntry(msgId, fragmentId, re.sub('\r\n', '', data)))
+                        
+                        # Note to the user that a sequence was picked up
+                        if fragmentId == sequenceNo:
+                            message = NMEAMessage.assemble_from_iterable(
+                                messages=list(
+                                    map(lambda msg: NMEAMessage(bytes(msg.data, "utf8")), self.fragDict[msgId])
+                                )
+                            ).decode()
+                            self.showInfo(message[data])
+                            # And delete the fragment entry
+                            del self.fragDict[msgId]
+                    else:
+                        # Decode the message
+                        message = decode_msg(re.sub('\r\n', '', data))
+
+                    # Only print the non data messages, cause data might have signatures
+                    if message: #and message['type'] not in [6, 8]:
+                        # If successful and this is not a data message, add the message
+                        # into a map, we might need to validate it
+                        self.msgDict[data] = MsgEntry(message, int(time.time()))
+                        # Now print the message fields in the dashboard
+                        for field in self.ais_fields:
+                            self.print_ais_field(message, field, self.counter%(self.max_lines-1))
+                        # And increase the line counter
+                        self.counter += 1
 
             except Exception as error:
                 self.showError(str(error))
@@ -201,7 +208,7 @@ class SerialThread (threading.Thread):
         self.ais_window.addstr(self.max_lines-1, 0, 'Info: ' + infoMsg[0:min(self.max_columns-7,len(infoMsg))])
 
     def showError(self, errorMsg):
-        self.ais_window.addstr(self.max_lines-1, 0, 'Error: ' + errorMsg[0:min(self.max_columns0-8,len(errorMsg))])
+        self.ais_window.addstr(self.max_lines-1, 0, 'Error: ' + errorMsg[0:min(self.max_columns-8,len(errorMsg))])
 
     def join(self):
         """
