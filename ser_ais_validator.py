@@ -1,13 +1,13 @@
-#!/bin/python3
+#!/usr/bin/python3
 #
 # Copyright (c) 2021 GLA UK Research and Development Directive.
-
+#
 # Licensed under the Apache License, Version 2.0 (the "License"); 
 # you may not use this file except in compliance with the License. 
 # You may obtain a copy of the License at
-
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-
+#
 # Unless required by applicable law or agreed to in writing, software 
 # distributed under the License is distributed on an "AS IS" BASIS, 
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
@@ -16,12 +16,22 @@
 #
 # Note that for accessing the serial port you might required root rights.
 # 
+# First install the required packages:
+# $ pip install pyserial
+# $ pip install pyais
+#
 # Usage Examples:
 # $ sudo ./ser_ais_validator --port=/dev/ttyS0 --baud=38400
-#
+
 import threading
 import time
+import curses
+import re
 import serial
+
+from curses import wrapper
+from pyais import NMEAMessage, decode_msg
+from pyais.exceptions import UnknownMessageException, InvalidNMEAMessageException
 
 class SerialThread (threading.Thread):
     """
@@ -30,7 +40,7 @@ class SerialThread (threading.Thread):
         and places them to the loaded messages list.
     """
     
-    def __init__(self, name, ser):
+    def __init__(self, name, ser, screen):
         """
             The Serial Thread Constructor.
         """
@@ -38,6 +48,20 @@ class SerialThread (threading.Thread):
         self.name = name
         self.ser = ser
         self.die = False
+        self.screen = screen
+
+        # Terminal window parameters
+        self.counter = 0
+        self.max_lines = 40
+        self.max_columns = 120
+
+        # lines, columns, start line, start column
+        self.ais_window = curses.newwin(self.max_lines, self.max_columns, 0, 0)
+         
+        # Print the window to the screen
+        self.screen.clear()
+        self.screen.refresh()
+        self.ais_window.refresh()
 
     def run (self):
         """
@@ -48,7 +72,7 @@ class SerialThread (threading.Thread):
             reading = self.ser.readline().decode()
             self.handle_data(reading)
             time.sleep(0.1)
-        print("Exiting... Please Wait...")
+        self.ais_window.addstr(self.max_lines-1, 0, "Exiting... Please Wait...")
 
     def handle_data(self, data):
         """
@@ -56,7 +80,12 @@ class SerialThread (threading.Thread):
             are allows and for the time being this just prints out the data.
         """
         if data.startswith('!AIVDM'):
-            print(data)
+            self.counter += 1
+            try:
+                message = decode_msg(re.sub('\r\n','',data))
+                self.ais_window.addstr(self.counter%(self.max_lines-1), 0, message)
+            except (UnknownMessageException, InvalidNMEAMessageException) as error:
+               self.ais_window.addstr(self.max_lines-1, 0, error)
 
     def join(self):
         """
@@ -66,7 +95,7 @@ class SerialThread (threading.Thread):
         self.die = True
         super().join()
 
-def main():
+def main(screen):
     """
         The main function of the script where the input arguments are parsed and
         the serial port monitoring begins.
@@ -85,7 +114,7 @@ def main():
     serial_port = serial.Serial(options.port, options.baud, timeout=0, parity=serial.PARITY_NONE, rtscts=1)
 
     # And start the serial thread
-    s_thread = SerialThread('Serial Port Thread', serial_port)
+    s_thread = SerialThread('Serial Port Thread', serial_port, screen)
     s_thread.start()
     try:
         while serial_port.is_open:
@@ -95,6 +124,6 @@ def main():
         serial_port.close()
 
 if __name__ == '__main__':
-    main()
+    wrapper(main)
 
     
