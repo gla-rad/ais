@@ -17,8 +17,9 @@
 # Note that for accessing the serial port you might required root rights.
 # 
 # First install the required packages:
-# $ pip install pyserial
-# $ pip install pyais
+# $ sudo pip install pyserial
+# $ sudo pip install pyais
+# $ sudo pip install ecdsa
 #
 # Usage Examples:
 # $ sudo ./ser_ais_validator --port=/dev/ttyS0 --baud=38400
@@ -28,31 +29,45 @@ import time
 import curses
 import re
 import serial
-import json
 import time
+import hashlib
 
+# Terminal Dashboard Library
 from curses import wrapper
-from pyais import NMEAMessage, decode_msg
+
+# Python AIS Library Import
+from pyais import AISMessage, NMEAMessage, decode_msg
 from pyais.exceptions import UnknownMessageException, InvalidNMEAMessageException
 
+# Cryptography ECDSA Verification Imports 
+from ecdsa import VerifyingKey
+
 class MsgEntry:
-    msg: NMEAMessage
+    """
+        A structure to contain the received AIS messages and their relevant
+        data, such as the reception time.
+    """
+    msg: AISMessage
     time: float
 
-    def __init__(self, msg: NMEAMessage, time: float):
+    def __init__(self, msg: AISMessage, data: str, time: float):
         self.msg = msg
+        self.data = data
         self.time = time
 
 class FragmentEntry:
+    """
+        A structure to contain the various AIS message fragements received 
+        while their are being reconstructed.
+    """
     msgId: int
     fragmentIndex: int
     data: str
 
     def __init__(self, id: int, index: int, data: str):
         self.msgId = id
-        self.fragmentIndex = index
+        self.fragmentId = index
         self.data = data
-
 
 class SerialThread (threading.Thread):
     """
@@ -73,15 +88,21 @@ class SerialThread (threading.Thread):
         self.screen = screen
         self.msgDict = dict()
         self.fragDict = dict()
+        self.ecdsaKey = None
+
+        # Load the ECDSA verification key
+        with open('CorkHoleTest-Public.pem','rt') as f:    
+            self.ecdsaKey = VerifyingKey.from_pem(f.read(), hashfunc=hashlib.sha256)
 
         # Terminal window parameters
         self.counter = 0
         self.max_lines = 40
-        self.max_columns = 120
+        self.max_columns = 160
 
         # lines, columns, start line, start column
         self.header_window = curses.newwin(9, self.max_columns, 0, 0)
         self.ais_window = curses.newwin(self.max_lines, self.max_columns, 9, 0)
+        self.info_window = curses.newwin(2, self.max_columns, 9 + self.max_lines, 0)
 
         # Initialise the header window
         curses.init_pair(1, curses.COLOR_RED, curses.COLOR_WHITE)
@@ -91,7 +112,7 @@ class SerialThread (threading.Thread):
         self.header_window.addstr(3, 0, '#' + f"Currently monitoring serial port {self.ser.port}".center(self.max_columns - 2) + '#')
         self.header_window.addstr(4, 0, self.max_columns*'#')
         self.header_window.addstr(6, 0, '|-----------------------------------------------------------------------------------------------------------------|')
-        self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |      Name      |          AID Type          | Latitude | Longitude | Validated |')
+        self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |      Name      |          AID Type          | Latitude | Longitude | Verified  |')
         self.header_window.addstr(8, 0, '|-----------------------------------------------------------------------------------------------------------------|')
 
         # Print the window to the screen
@@ -99,6 +120,7 @@ class SerialThread (threading.Thread):
         self.screen.refresh()
         self.header_window.refresh()
         self.ais_window.refresh()
+        self.info_window.refresh()
 
     def run (self):
         """
@@ -107,6 +129,7 @@ class SerialThread (threading.Thread):
         """
         while not self.die:
             reading = self.ser.readline().decode()
+            reading = re.sub('\r\n', '', reading)
             self.handle_data(reading)
             time.sleep(0.1)
         self.ais_window.addstr(self.max_lines-1, 0, "Exiting... Please Wait...")
@@ -121,15 +144,19 @@ class SerialThread (threading.Thread):
             self.counter = 0
             self.msgDict.clear()
             self.ais_window.clear()
+
         # Only plot AIVDM data
         if data.startswith('!AIVDM'):
             try:
+                # Initialise with an empty message object
                 message = None
+
                 # Try to pick up message sequences but checking the fragment count
                 msgParts = data.split(',')
 
-                # NMEA Sentences 
+                # For valid NMEA sentences 
                 if len(msgParts) == 7:
+                    # Decode the message according to whether it has fragments or not
                     sequenceNo = int(msgParts[1])
                     if sequenceNo > 1:
                         msgId = int(msgParts[3])
@@ -140,30 +167,33 @@ class SerialThread (threading.Thread):
                             self.fragDict[msgId] = []
 
                         # Append the received message into the array if it seems OK
-                        self.fragDict[msgId].append(FragmentEntry(msgId, fragmentId, re.sub('\r\n', '', data)))
-                        
+                        if len(list(filter(lambda msg: msg.fragmentId == fragmentId, self.fragDict[msgId]))) == 0:
+                            self.fragDict[msgId].append(FragmentEntry(msgId, fragmentId, data))
+
                         # Note to the user that a sequence was picked up
-                        if fragmentId == sequenceNo:
+                        if len(self.fragDict[msgId]) == sequenceNo:
                             message = NMEAMessage.assemble_from_iterable(
                                 messages=list(
-                                    map(lambda msg: NMEAMessage(bytes(msg.data, "utf8")), self.fragDict[msgId])
+                                    map(lambda msg: NMEAMessage(msg.data.encode('utf-8')), self.fragDict[msgId])
                                 )
                             ).decode()
-                            self.showInfo(message[data])
+                            self.handle_authorization_message(message.content)
                             # And delete the fragment entry
                             del self.fragDict[msgId]
                     else:
                         # Decode the message
-                        message = decode_msg(re.sub('\r\n', '', data))
+                        message = NMEAMessage.assemble_from_iterable(
+                                messages=[NMEAMessage(data.encode('utf-8'))]
+                            ).decode()
 
                     # Only print the non data messages, cause data might have signatures
-                    if message: #and message['type'] not in [6, 8]:
+                    if message and type(message) == AISMessage: #and message['type'] not in [6, 8]:
                         # If successful and this is not a data message, add the message
                         # into a map, we might need to validate it
-                        self.msgDict[data] = MsgEntry(message, int(time.time()))
+                        self.msgDict[self.counter] = MsgEntry(message, message.nmea, int(time.time()))
                         # Now print the message fields in the dashboard
                         for field in self.ais_fields:
-                            self.print_ais_field(message, field, self.counter%(self.max_lines-1))
+                            self.print_ais_field(message.content, field, self.counter%(self.max_lines-1))
                         # And increase the line counter
                         self.counter += 1
 
@@ -172,43 +202,67 @@ class SerialThread (threading.Thread):
 
         # And update the window
         self.ais_window.refresh()
+        
+    def handle_authorization_message(self, message: dict):  
+        # Look for a message that matches the signature
+        for index in range(len(self.msgDict)-1, -1, -1):
+            messageEntry = self.msgDict[index]
+            stampedMessageEntryData = messageEntry.msg.nmea
 
-    def print_ais_field(self, message, field, line):
-       value = str(message[field]) if field in message else ' '
-       start = 0
-       length = 0
-       if(field == 'type'):
-           start = 0
-           length = 4
-       elif(field == 'mmsi'):
-           start = 7
-           length = 11
-       elif(field == 'dest_mmsi'):
-           start = 21
-           length = 9
-       elif(field == 'name'):
-           start = 33
-           length = 16
-       elif(field == 'aid_type'):
-           start = 50
-           length = 26
-       elif(field == 'lat'):
-           start = 79
-           length = 8
-       elif(field == 'lon'):
-           start = 90
-           length = 9
-       else:
-           start = 102
-           length = 9
-       value = value[0:length] if len(value) > length else value
-       self.ais_window.addstr(line, start, f'| {value:<{length}} |')
+            hashValue = hashlib.sha256()
+            hashValue.update(stampedMessageEntryData.raw)
+            
+            # Try to verify
+            try:
+                assert self.ecdsaKey.verify(self.bitstring_to_bytes(message["data"]), hashValue.digest())
+                self.print_ais_field({"verified":"Yes"}, "verified", index)
+                break
+            except Exception as error:
+                pass # Nothing to do, verification just failed
+    
+    def bitstring_to_bytes(self, s):
+        return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
+
+    def print_ais_field(self, message: dict, field: str, line: int):
+        value = str(message[field] if field in message else ' ')
+        start = 0
+        length = 0
+        if(field == 'type'):
+            start = 0
+            length = 4
+        elif(field == 'mmsi'):
+            start = 7
+            length = 11
+        elif(field == 'dest_mmsi'):
+            start = 21
+            length = 9
+        elif(field == 'name'):
+            start = 33
+            length = 16
+        elif(field == 'aid_type'):
+            start = 50
+            length = 26
+        elif(field == 'lat'):
+            start = 79
+            length = 8
+        elif(field == 'lon'):
+            start = 90
+            length = 9
+        else:
+            start = 102
+            length = 9
+        value = value[0:length] if len(value) > length else value
+        self.ais_window.addstr(line, start, f'| {value:<{length}} |')
 
     def showInfo(self, infoMsg):
-        self.ais_window.addstr(self.max_lines-1, 0, 'Info: ' + infoMsg[0:min(self.max_columns-7,len(infoMsg))])
+        output = str(infoMsg)[0:min(self.max_columns-7,len(str(infoMsg)))]
+        padding = self.max_columns-7
+        self.info_window.addstr(0, 0, f'Info: {output:<{padding}}')
 
     def showError(self, errorMsg):
-        self.ais_window.addstr(self.max_lines-1, 0, 'Error: ' + errorMsg[0:min(self.max_columns-8,len(errorMsg))])
+        output = str(errorMsg)[0:min(self.max_columns-8,len(str(errorMsg)))]
+        padding = self.max_columns-8
+        self.info_window.addstr(1, 0, f'Error: {output:<{padding}}')
 
     def join(self):
         """
