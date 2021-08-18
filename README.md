@@ -1,4 +1,4 @@
-# AIS BlackToolkit- GLA Research & Development Version
+# AIS BlackToolkit - GLA Research & Development Version
 
 This repository contains some work on the AIS BlackToolkit performed by the 
 Research &  Development Directorate of the General Lighthouse Authorities of UK 
@@ -23,7 +23,7 @@ This top level directory of the repository contains the following:
 * AIVDM_pre.pl - Preprocessor / user interface (by Gary C. Kessler)
 * unpacker.c - An NMEA sentence generator script based on C
 * unpacker.pl - A Perm verion of the generator script (by Gary C. Kessler)
-* unpacker.py - A Python verion of the generator script
+* unpacker.py - A Python verion of the generator script (by GRAD)
 * ser_ais_validator.py - A python script to read AIS messages of a serial port and validate them
 
 ## The Serial AIS Validator
