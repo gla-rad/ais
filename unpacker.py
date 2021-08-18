@@ -10,10 +10,11 @@
 # of the License, or (at your option) any later version.
 #
 # Usage Examples:
-# ./NMEA_Generator.py --data=001000000011101011110111001110011000100000000000010000010100100001100101011011000110110001101111001000000101011101101111011100100110110001100100
-# ./NMEA_Generator.py --data=`./AIVDM_Encoder.py --type=21 --mmsi=123456789 --lon=51.9474 --lat=1.2555 --aid_type=20 --vsize=1x1`
+# ./unpacker.py --data=001000000011101011110111001110011000100000000000010000010100100001100101011011000110110001101111001000000101011101101111011100100110110001100100
+# ./AIVDM_Encoder.py --type=21 --mmsi=123456789 --lon=51.9474 --lat=1.2555 --aid_type=20 --vsize=1x1 | xargs -IX  ./unpacker.py --data=X
 #
 
+# NMEA sentence generator
 def nmea_generator(payload):
         # Converts the binary payload to a text string (NMEA) payload, thsi to allow checking and composing a NEMA sentence        
         CharTable =[["0", "@", "000000"], ["1", "A", "000001"], ["2", "B", "000010"], ["3", "C", "000011"], ["4", "D", "000100"], ["5", "E", "000101"],
@@ -43,7 +44,7 @@ def nmea_generator(payload):
                     MESSENC += PAIR[0]
         #print (MESSENC)     #Prints the payload text string
 
-        # Next line fakes a NEMA message using the above text string
+        # Next line fakes a NMEA message using the above text string
         #  Really want to generate binary for the entire message (not just the payload) and convert that to NEMA sting
         #  that way we would get a propper message without having to fake it.
         FakeMessageMaker = ('AIVDM,1,1,,A,' + MESSENC + ',0')
@@ -53,7 +54,7 @@ def nmea_generator(payload):
         return(FakeMessage)
 
 
-# Checksum for NEMA sentences
+# Checksum for NMEA sentences
 def checksum(s):
     c = 0
     for ch in s:
@@ -61,7 +62,7 @@ def checksum(s):
     c = hex(c).upper()[2:]
     return c
 
-
+# Main function
 def main():
     from optparse import OptionParser
 

@@ -36,8 +36,7 @@ import hashlib
 from curses import wrapper
 
 # Python AIS Library Import
-from pyais import AISMessage, NMEAMessage, decode_msg
-from pyais.exceptions import UnknownMessageException, InvalidNMEAMessageException
+from pyais import AISMessage, NMEAMessage
 
 # Cryptography ECDSA Verification Imports 
 from ecdsa import VerifyingKey
@@ -48,6 +47,7 @@ class MsgEntry:
         data, such as the reception time.
     """
     msg: AISMessage
+    data: str
     time: float
 
     def __init__(self, msg: AISMessage, data: str, time: float):
@@ -112,7 +112,7 @@ class SerialThread (threading.Thread):
         self.header_window.addstr(3, 0, '#' + f"Currently monitoring serial port {self.ser.port}".center(self.max_columns - 2) + '#')
         self.header_window.addstr(4, 0, self.max_columns*'#')
         self.header_window.addstr(6, 0, '|-----------------------------------------------------------------------------------------------------------------|')
-        self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |      Name      |          AID Type          | Latitude | Longitude | Verified  |')
+        self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |      Name      |          Aid Type          | Latitude | Longitude | Verified  |')
         self.header_window.addstr(8, 0, '|-----------------------------------------------------------------------------------------------------------------|')
 
         # Print the window to the screen
@@ -144,6 +144,7 @@ class SerialThread (threading.Thread):
             self.counter = 0
             self.msgDict.clear()
             self.ais_window.clear()
+            self.info_window.clear()
 
         # Only plot AIVDM data
         if data.startswith('!AIVDM'):
@@ -177,7 +178,11 @@ class SerialThread (threading.Thread):
                                     map(lambda msg: NMEAMessage(msg.data.encode('utf-8')), self.fragDict[msgId])
                                 )
                             ).decode()
-                            self.handle_authorization_message(message.content)
+
+                            # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
+                            if len(message.content["data"]) == 512:
+                                self.handle_authorization_message(message.content)
+
                             # And delete the fragment entry
                             del self.fragDict[msgId]
                     else:
@@ -190,7 +195,7 @@ class SerialThread (threading.Thread):
                     if message and type(message) == AISMessage: #and message['type'] not in [6, 8]:
                         # If successful and this is not a data message, add the message
                         # into a map, we might need to validate it
-                        self.msgDict[self.counter] = MsgEntry(message, message.nmea, int(time.time()))
+                        self.msgDict[self.counter] = MsgEntry(message, data, int(time.time()))
                         # Now print the message fields in the dashboard
                         for field in self.ais_fields:
                             self.print_ais_field(message.content, field, self.counter%(self.max_lines-1))
@@ -198,7 +203,7 @@ class SerialThread (threading.Thread):
                         self.counter += 1
 
             except Exception as error:
-                self.showError(str(error))
+                self.showError(error)
 
         # And update the window
         self.ais_window.refresh()
@@ -207,10 +212,11 @@ class SerialThread (threading.Thread):
         # Look for a message that matches the signature
         for index in range(len(self.msgDict)-1, -1, -1):
             messageEntry = self.msgDict[index]
-            stampedMessageEntryData = messageEntry.msg.nmea
+            nmeaMessage = messageEntry.msg.nmea
+            nmeaLength = int(len(nmeaMessage.bit_array)) - int(nmeaMessage.fill_bits)
 
             hashValue = hashlib.sha256()
-            hashValue.update(stampedMessageEntryData.raw)
+            hashValue.update(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big'))
             
             # Try to verify
             try:
@@ -220,7 +226,7 @@ class SerialThread (threading.Thread):
             except Exception as error:
                 pass # Nothing to do, verification just failed
     
-    def bitstring_to_bytes(self, s):
+    def bitstring_to_bytes(self, s: str):
         return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
 
     def print_ais_field(self, message: dict, field: str, line: int):
@@ -258,11 +264,13 @@ class SerialThread (threading.Thread):
         output = str(infoMsg)[0:min(self.max_columns-7,len(str(infoMsg)))]
         padding = self.max_columns-7
         self.info_window.addstr(0, 0, f'Info: {output:<{padding}}')
+        self.info_window.refresh()
 
     def showError(self, errorMsg):
         output = str(errorMsg)[0:min(self.max_columns-8,len(str(errorMsg)))]
         padding = self.max_columns-8
         self.info_window.addstr(1, 0, f'Error: {output:<{padding}}')
+        self.info_window.refresh()
 
     def join(self):
         """
