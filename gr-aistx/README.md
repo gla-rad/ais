@@ -1,3 +1,4 @@
+# AIS BlackToolkit Installation Instructions
 
 This directory contains a custom block for GnuRadio we called AIS Frame Builder.
 It is part of the AIS BlackToolkit.
@@ -9,29 +10,35 @@ as defined in the protocol specification for AIS.
 
 Install as described in the official out-of-tree documentation, i.e.:
 
+```bash
 $ mkdir build
 $ cd build
 $ cmake ../
 $ make
 $ sudo make install 
 $ sudo ldconfig
+```
 
 You will need to have the appropriate dependencies installed. On an Ubuntu 20.04
 system these are:
 
+```bash
 $ sudo apt install gnuradio
 $ sudo apt install swig
 $ sudo apt install doxygen
 $ sudo apt install graphviz
 $ sudo apt install libboost-all-dev
 $ sudo apt install liborc-0.4-dev
+```
 
 On some systems the installation directory of the python3 modules will be at
 the '''lib/python3/dist-packages''' which might not be picked up by python3.
 To resolve this a quick hack it to link it to your current python installation
 with something like:
 
+```bash
 $ sudo ln -s /usr/local/lib/python3/dist-packages/AISTX /usr/local/lib/python3.8/dist-packages/AISTX
+```
 
 Copyright 2013-2014 -- Embyte & Pastus
 
