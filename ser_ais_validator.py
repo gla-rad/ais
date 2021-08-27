@@ -31,6 +31,8 @@ import re
 import serial
 import time
 import hashlib
+import requests
+import base64
 
 # Terminal Dashboard Library
 from curses import wrapper
@@ -77,7 +79,7 @@ class SerialThread (threading.Thread):
     """
     ais_fields = ['type','mmsi','dest_mmsi','name','aid_type','lat','lon','valid']
 
-    def __init__(self, name, ser, screen):
+    def __init__(self, name, ser, screen, vhost):
         """
             The Serial Thread Constructor.
         """
@@ -89,6 +91,7 @@ class SerialThread (threading.Thread):
         self.msgDict = dict()
         self.fragDict = dict()
         self.ecdsaKey = None
+        self.vhost = vhost
 
         # Load the ECDSA verification key
         with open('CorkHoleTest-Public.pem','rt') as f:    
@@ -218,13 +221,23 @@ class SerialThread (threading.Thread):
             hashValue = hashlib.sha256()
             hashValue.update(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big'))
             
+            url = f'http://{self.vhost}/api/signatures/atons/verify?atonUID=aton.uk.grad_test_aton_1'
+            content = base64.b64encode(hashValue.digest()).decode('ascii')
+            signature = base64.b64encode(self.bitstring_to_bytes(message["data"])).decode('ascii')
+            payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
+            headers = {'content-type': 'application/json'}
+
             # Try to verify
             try:
-                assert self.ecdsaKey.verify(self.bitstring_to_bytes(message["data"]), hashValue.digest())
-                self.print_ais_field({"verified":"Yes"}, "verified", index)
-                break
+                response = requests.post(url, data=payload, headers=headers)
+                if response.ok:
+                    self.print_ais_field({"verified":"Yes"}, "verified", index)
+                    break
             except Exception as error:
                 pass # Nothing to do, verification just failed
+
+            # Only try once for now - just the last message
+            break
     
     def bitstring_to_bytes(self, s: str):
         return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
@@ -291,6 +304,7 @@ def main(screen):
     parser = OptionParser(description=desc)
     parser.add_option("--port", help="The serial port to read the data from", default="/dev/ttyUSB0")
     parser.add_option("--baud", help="The serial port baud rate", default=38400)
+    parser.add_option("--vhost", help="The verification server hostname", default="localhost:8764")
 
     # Parse the options
     (options, args) = parser.parse_args()
@@ -299,7 +313,7 @@ def main(screen):
     serial_port = serial.Serial(options.port, options.baud, timeout=0, parity=serial.PARITY_NONE, rtscts=1)
 
     # And start the serial thread
-    s_thread = SerialThread('Serial Port Thread', serial_port, screen)
+    s_thread = SerialThread('Serial Port Thread', serial_port, screen, options.vhost)
     s_thread.start()
     try:
         while serial_port.is_open:

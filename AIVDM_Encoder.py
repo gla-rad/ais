@@ -30,7 +30,7 @@ def encode_string(string, ascii = False):
 	return encoded_string
 
 def pad_mod_6(string):
-    # Padding to match the mutliple of 6 requirement
+	# Padding to match the mutliple of 6 requirement
 	_padding = '0'*((6 - (len(string) % 6)) % 6)				
 	#Return the padded string
 	return string+_padding
@@ -182,12 +182,12 @@ def encode_21(__mmsi, __aid_type, __aid_name, __long, __lat, __vsize, __virtual)
 
 	_aid_type = '{0:b}'.format(__aid_type).rjust(5,'0')
 	if len(__aid_name) <= 20:
-		_name = encode_string(__aid_name).rjust(120,'0')
+		_name = encode_string(__aid_name.ljust(20, ' ')).rjust(120,'0')
 		_name_ext = ''
 	else:
 		__aid_name = str.strip(__aid_name,'@')
 		if len(__aid_name) <= 20:
-			_name = encode_string(__aid_name).rjust(120,'0')
+			_name = encode_string(__aid_name.ljust(20, ' ')).rjust(120,'0')
 			_name_ext = ''
 		else:
 			_name = encode_string(__aid_name[:20])
@@ -392,4 +392,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+	main()
