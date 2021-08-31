@@ -220,8 +220,12 @@ class SerialThread (threading.Thread):
 
             hashValue = hashlib.sha256()
             hashValue.update(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big'))
+
+            # Get the device MMSI from the message content
+            mmsi = messageEntry.msg.content['mmsi']
             
-            url = f'http://{self.vhost}/api/signatures/atons/verify?atonUID=aton.uk.grad_test_aton_1'
+            # Build the HTTP call to verify the message
+            url = f'http://{self.vhost}/api/signatures/mmsi/verify/{mmsi}'
             content = base64.b64encode(hashValue.digest()).decode('ascii')
             signature = base64.b64encode(self.bitstring_to_bytes(message["data"])).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
