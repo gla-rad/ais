@@ -102,7 +102,7 @@ class SerialThread (threading.Thread):
         # Terminal window parameters
         self.counter = 0
         self.max_lines = 40
-        self.max_columns = 160
+        self.max_columns = 116
 
         # lines, columns, start line, start column
         self.header_window = curses.newwin(9, self.max_columns, 0, 0)
