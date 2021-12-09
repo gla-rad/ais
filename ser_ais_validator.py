@@ -200,7 +200,7 @@ class SerialThread (threading.Thread):
                     if message and type(message) == AISMessage: #and message['type'] not in [6, 8]:
                         # If successful and this is not a data message, add the message
                         # into a map, we might need to validate it
-                        self.msgDict[self.counter] = MsgEntry(message, data, self.timestampCalculation(message))
+                        self.msgDict[self.counter] = MsgEntry(message, data, self.timestampCalculation(message.content))
                         # Now print the message fields in the dashboard
                         for field in self.ais_fields:
                             self.print_ais_field(message.content, field, self.counter%(self.max_lines-1))
@@ -253,6 +253,10 @@ class SerialThread (threading.Thread):
     def timestampCalculation(self, message: dict):
         # Figure out the current time (but no nanos)
         now = datetime.now().replace(microsecond=0)
+
+        # If the message doesn't have a second, just return the now time
+        if 'second' not in message:
+            return int(now.timestamp())
 
         # Replace the seconds with the ones specified in the message to get the TX
         # Be careful, cause if the second int the message is over 60, then we 
