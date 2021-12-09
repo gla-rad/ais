@@ -34,6 +34,8 @@ import hashlib
 import requests
 import base64
 
+from datetime import datetime
+
 # Terminal Dashboard Library
 from curses import wrapper
 
@@ -198,7 +200,7 @@ class SerialThread (threading.Thread):
                     if message and type(message) == AISMessage: #and message['type'] not in [6, 8]:
                         # If successful and this is not a data message, add the message
                         # into a map, we might need to validate it
-                        self.msgDict[self.counter] = MsgEntry(message, data, int(time.time()))
+                        self.msgDict[self.counter] = MsgEntry(message, data, self.timestampCalculation(message))
                         # Now print the message fields in the dashboard
                         for field in self.ais_fields:
                             self.print_ais_field(message.content, field, self.counter%(self.max_lines-1))
@@ -218,11 +220,16 @@ class SerialThread (threading.Thread):
             nmeaMessage = messageEntry.msg.nmea
             nmeaLength = int(len(nmeaMessage.bit_array)) - int(nmeaMessage.fill_bits)
 
-            hashValue = hashlib.sha256()
-            hashValue.update(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big'))
-
             # Get the device MMSI from the message content
             mmsi = messageEntry.msg.content['mmsi']
+
+            # Only check for signature messages that come from the same mmsi
+            if mmsi != message['mmsi']:
+                continue
+
+            # Calculate the hash to be verified
+            hashValue = hashlib.sha256()
+            hashValue.update(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big'))            
             
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signatures/mmsi/verify/{mmsi}'
@@ -242,6 +249,25 @@ class SerialThread (threading.Thread):
 
             # Only try once for now - just the last message
             break
+
+    def timestampCalculation(self, message: dict):
+        # Figure out the current time (but no nanos)
+        now = datetime.now().replace(microsecond=0)
+
+        # Replace the seconds with the ones specified in the message to get the TX
+        # Be careful, cause if the second int the message is over 60, then we 
+        # assume it was encoded with 00 second
+        if message['second']< 60:
+            txTimestamp = now.replace(second=message['second'])
+        else:
+            txTimestamp = now.replace(second=0)
+
+        # If the minute is different, then it must be the previous one
+        if txTimestamp > now:
+            txTimestamp.replace(minute=txTimestamp.minute-1)
+
+        # And return the vau
+        return int(txTimestamp.timestamp())
     
     def bitstring_to_bytes(self, s: str):
         return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
