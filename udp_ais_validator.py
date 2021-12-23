@@ -14,20 +14,18 @@
 # See the License for the specific language governing permissions and 
 # limitations under the License.
 #
-# Note that for accessing the serial port you might required root rights.
 # 
 # First install the required packages:
-# $ sudo pip install pyserial
 # $ sudo pip install pyais
 #
 # Usage Examples:
-# $ sudo ./ser_ais_validator --port=/dev/ttyS0 --baud=38400
+# $ sudo ./udp_ais_validator --port=60022
 
 import threading
 import time
 import curses
 import re
-import serial
+import socket
 import time
 import hashlib
 import requests
@@ -69,21 +67,22 @@ class FragmentEntry:
         self.fragmentId = index
         self.data = data
 
-class SerialThread (threading.Thread):
+class UDPThread (threading.Thread):
     """
-        The definition of the serial thread that read the data from the 
-        specified serial port. Then it filters out only the AIVDM sentences
+        The definition of the udp thread that read the data from the 
+        specified socket port. Then it filters out only the AIVDM sentences
         and places them to the loaded messages list.
     """
     ais_fields = ['type','mmsi','dest_mmsi','name','aid_type','lat','lon','valid']
 
-    def __init__(self, name, ser, screen, vhost):
+    def __init__(self, name, socket, screen, vhost):
         """
-            The Serial Thread Constructor.
+            The UDP Thread Constructor.
         """
         threading.Thread.__init__(self)
         self.name = name
-        self.ser = ser
+        self.socket = socket
+        self.buffer_size = 2048
         self.die = False
         self.screen = screen
         self.msgDict = dict()
@@ -92,7 +91,7 @@ class SerialThread (threading.Thread):
 
         # Terminal window parameters
         self.counter = 0
-        self.max_lines = 40
+        self.max_lines = 20
         self.max_columns = 116
 
         # lines, columns, start line, start column
@@ -104,8 +103,8 @@ class SerialThread (threading.Thread):
         curses.init_pair(1, curses.COLOR_RED, curses.COLOR_WHITE)
         self.header_window.addstr(0, 0, self.max_columns*'#')
         self.header_window.addstr(1, 0, '#' + '© GLA Research & Development Directorate'.center(self.max_columns - 2) + '#')
-        self.header_window.addstr(2, 0, '#' + "SERIAL AIS MESSAGE VALIDATOR".center(self.max_columns - 2) + '#')
-        self.header_window.addstr(3, 0, '#' + f"Currently monitoring serial port {self.ser.port}".center(self.max_columns - 2) + '#')
+        self.header_window.addstr(2, 0, '#' + "UDP AIS MESSAGE VALIDATOR".center(self.max_columns - 2) + '#')
+        self.header_window.addstr(3, 0, '#' + f"Currently monitoring UDP port {self.socket.getsockname()[1]}".center(self.max_columns - 2) + '#')
         self.header_window.addstr(4, 0, self.max_columns*'#')
         self.header_window.addstr(6, 0, '|-----------------------------------------------------------------------------------------------------------------|')
         self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |      Name      |          Aid Type          | Latitude | Longitude | Verified  |')
@@ -120,19 +119,28 @@ class SerialThread (threading.Thread):
 
     def run (self):
         """
-            The main operation of the Serial Thread, where the input from the
-            serial port is received.
+            The main operation of the UDP Thread, where the input from the
+            UDP socket is received.
         """
         while not self.die:
-            reading = self.ser.readline().decode()
-            reading = re.sub('\r\n', '', reading)
-            self.handle_data(reading)
-            time.sleep(0.1)
+            try:
+                data, address = self.socket.recvfrom(self.buffer_size)
+            except socket.error as error:
+                if isinstance(error, socket.timeout):
+                    pass
+                else:
+                    self.showError(error)
+            else:
+                reading = data.decode('ascii')
+                reading = reading[reading.rindex('!AIVDM'):]
+                reading = re.sub('\r\n', '', reading)
+                self.handle_data(reading)
+
         self.ais_window.addstr(self.max_lines-1, 0, "Exiting... Please Wait...")
 
     def handle_data(self, data):
         """
-            The serial port data input handling function. Only AIVDM sentences 
+            The UDP port data input handling function. Only AIVDM sentences 
             are allows and for the time being this just prints out the data.
         """
         # Reset the line counter
@@ -150,9 +158,10 @@ class SerialThread (threading.Thread):
 
                 # Try to pick up message sequences but checking the fragment count
                 msgParts = data.split(',')
-
+                
                 # For valid NMEA sentences 
                 if len(msgParts) == 7:
+                    
                     # Decode the message according to whether it has fragments or not
                     sequenceNo = int(msgParts[1])
                     if sequenceNo > 1:
@@ -176,7 +185,8 @@ class SerialThread (threading.Thread):
                             ).decode()
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
-                            if len(message.content["data"]) == 512:
+                            self.showError(len(message.content["data"]))
+                            if len(message.content["data"]) > 500:
                                 self.handle_authorization_message(message.content)
 
                             # And delete the fragment entry
@@ -215,17 +225,17 @@ class SerialThread (threading.Thread):
             mmsi = messageEntry.msg.content['mmsi']
 
             # Only check for signature messages that come from the same mmsi
-            if mmsi != message['mmsi']:
-                continue
+            # if mmsi != message['mmsi']:
+            #     continue
 
             # Calculate the hash to be verified
             hashValue = hashlib.sha256()
             hashValue.update(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big'))            
-            
+
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signatures/mmsi/verify/{mmsi}'
             content = base64.b64encode(hashValue.digest()).decode('ascii')
-            signature = base64.b64encode(self.bitstring_to_bytes(message["data"])).decode('ascii')
+            signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:512])).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
             headers = {'content-type': 'application/json'}
 
@@ -236,6 +246,7 @@ class SerialThread (threading.Thread):
                     self.print_ais_field({"verified":"Yes"}, "verified", index)
                     break
             except Exception as error:
+                print(error, flush=True)
                 pass # Nothing to do, verification just failed
 
             # Only try once for now - just the last message
@@ -299,8 +310,8 @@ class SerialThread (threading.Thread):
         self.ais_window.addstr(line, start, f'| {value:<{length}} |')
 
     def showInfo(self, infoMsg):
-        output = str(infoMsg)[0:min(self.max_columns-7,len(str(infoMsg)))]
-        padding = self.max_columns-7
+        output = str(infoMsg)[0:min(self.max_columns-8,len(str(infoMsg)))]
+        padding = self.max_columns-8
         self.info_window.addstr(0, 0, f'Info: {output:<{padding}}')
         self.info_window.refresh()
 
@@ -321,31 +332,32 @@ class SerialThread (threading.Thread):
 def main(screen):
     """
         The main function of the script where the input arguments are parsed and
-        the serial port monitoring begins.
+        the UDP port monitoring begins.
     """
     from optparse import OptionParser
 
-    desc="""Use this tool to validate the AIVDM sentences received through a serial port."""
+    desc="""Use this tool to validate the AIVDM sentences received through a UDP port."""
     parser = OptionParser(description=desc)
-    parser.add_option("--port", help="The serial port to read the data from", default="/dev/ttyUSB0")
-    parser.add_option("--baud", help="The serial port baud rate", default=38400)
-    parser.add_option("--vhost", help="The verification server hostname", default="localhost:8764")
+    parser.add_option("--port", help="The UDP port to read the data from", default="60021")
+    parser.add_option("--vhost", help="The verification server hostname", default="zombie:8764")
 
     # Parse the options
     (options, args) = parser.parse_args()
 
-    # Open the serial port
-    serial_port = serial.Serial(options.port, options.baud, timeout=0, parity=serial.PARITY_NONE, rtscts=1)
-
+    # Open the UDP port
+    udp_recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_recv_sock.settimeout(1)
+    udp_recv_sock.bind(("", int(options.port)))
+    
     # And start the serial thread
-    s_thread = SerialThread('Serial Port Thread', serial_port, screen, options.vhost)
+    s_thread = UDPThread('UDP Port Thread', udp_recv_sock, screen, options.vhost)
     s_thread.start()
     try:
-        while serial_port.is_open:
+        while True:
             time.sleep(1)
     except KeyboardInterrupt:
         s_thread.join()
-        serial_port.close()
+        udp_recv_sock.close()
 
 if __name__ == '__main__':
     wrapper(main)
