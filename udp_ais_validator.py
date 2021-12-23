@@ -185,7 +185,6 @@ class UDPThread (threading.Thread):
                             ).decode()
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
-                            self.showError(len(message.content["data"]))
                             if len(message.content["data"]) > 500:
                                 self.handle_authorization_message(message.content)
 
@@ -339,7 +338,7 @@ def main(screen):
     desc="""Use this tool to validate the AIVDM sentences received through a UDP port."""
     parser = OptionParser(description=desc)
     parser.add_option("--port", help="The UDP port to read the data from", default="60021")
-    parser.add_option("--vhost", help="The verification server hostname", default="zombie:8764")
+    parser.add_option("--vhost", help="The verification server hostname", default="localhost:8764")
 
     # Parse the options
     (options, args) = parser.parse_args()
