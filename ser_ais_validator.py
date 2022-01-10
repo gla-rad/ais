@@ -176,7 +176,7 @@ class SerialThread (threading.Thread):
                             ).decode()
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
-                            if len(message.content["data"]) == 512:
+                            if "data" in message.content and len(message.content["data"]) in [512, 514]:
                                 self.handle_authorization_message(message.content)
 
                             # And delete the fragment entry
