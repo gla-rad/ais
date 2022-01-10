@@ -185,7 +185,7 @@ class UDPThread (threading.Thread):
                             ).decode()
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
-                            if len(message.content["data"]) > 500:
+                            if "data" in message.content and len(message.content["data"]) in [512, 514]:
                                 self.handle_authorization_message(message.content)
 
                             # And delete the fragment entry
@@ -245,7 +245,6 @@ class UDPThread (threading.Thread):
                     self.print_ais_field({"verified":"Yes"}, "verified", index)
                     break
             except Exception as error:
-                print(error, flush=True)
                 pass # Nothing to do, verification just failed
 
             # Only try once for now - just the last message
