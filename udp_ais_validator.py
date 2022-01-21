@@ -75,19 +75,24 @@ class UDPThread (threading.Thread):
     """
     ais_fields = ['type','mmsi','dest_mmsi','name','aid_type','lat','lon','valid']
 
-    def __init__(self, name, socket, screen, vhost):
+    def __init__(self, name: str, rcv_socket: socket, screen, vhost: str, fwdhost: str, fwdport: str):
         """
             The UDP Thread Constructor.
         """
         threading.Thread.__init__(self)
         self.name = name
-        self.socket = socket
+        self.rcv_socket = rcv_socket
         self.buffer_size = 2048
         self.die = False
         self.screen = screen
         self.msgDict = dict()
         self.fragDict = dict()
         self.vhost = vhost
+
+        # Initialise a forwarding operation if requested
+        self.fwd_host = fwdhost
+        self.fwd_port = int(fwdport) if fwdport else None
+        self.fwd_socket =  socket.socket(socket.AF_INET, socket.SOCK_DGRAM) if fwdhost and fwdport else None
 
         # Terminal window parameters
         self.counter = 0
@@ -104,7 +109,7 @@ class UDPThread (threading.Thread):
         self.header_window.addstr(0, 0, self.max_columns*'#')
         self.header_window.addstr(1, 0, '#' + '© GLA Research & Development Directorate'.center(self.max_columns - 2) + '#')
         self.header_window.addstr(2, 0, '#' + "UDP AIS MESSAGE VALIDATOR".center(self.max_columns - 2) + '#')
-        self.header_window.addstr(3, 0, '#' + f"Currently monitoring UDP port {self.socket.getsockname()[1]}".center(self.max_columns - 2) + '#')
+        self.header_window.addstr(3, 0, '#' + f"Currently monitoring UDP port {self.rcv_socket.getsockname()[1]}".center(self.max_columns - 2) + '#')
         self.header_window.addstr(4, 0, self.max_columns*'#')
         self.header_window.addstr(6, 0, '|-----------------------------------------------------------------------------------------------------------------|')
         self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |      Name      |          Aid Type          | Latitude | Longitude | Verified  |')
@@ -124,7 +129,7 @@ class UDPThread (threading.Thread):
         """
         while not self.die:
             try:
-                data, address = self.socket.recvfrom(self.buffer_size)
+                data, address = self.rcv_socket.recvfrom(self.buffer_size)
             except socket.error as error:
                 if isinstance(error, socket.timeout):
                     pass
@@ -243,6 +248,11 @@ class UDPThread (threading.Thread):
                 response = requests.post(url, data=payload, headers=headers)
                 if response.ok:
                     self.print_ais_field({"verified":"Yes"}, "verified", index)
+
+                    #Forward the message is a forwarding port is found
+                    if self.fwd_host and self.fwd_port:
+                        self.fwd_socket.sendto(bytes(messageEntry.data + '\r\n', "utf-8"), (self.fwd_host, self.fwd_port))
+
                     break
             except Exception as error:
                 pass # Nothing to do, verification just failed
@@ -338,6 +348,8 @@ def main(screen):
     parser = OptionParser(description=desc)
     parser.add_option("--port", help="The UDP port to read the data from", default="60021")
     parser.add_option("--vhost", help="The verification server hostname", default="localhost:8764")
+    parser.add_option("--fwdhost", help="The host to forward verified messages", default="127.0.0.1")
+    parser.add_option("--fwdport", help="The post to forward verified messages", default=None)
 
     # Parse the options
     (options, args) = parser.parse_args()
@@ -348,7 +360,7 @@ def main(screen):
     udp_recv_sock.bind(("", int(options.port)))
     
     # And start the serial thread
-    s_thread = UDPThread('UDP Port Thread', udp_recv_sock, screen, options.vhost)
+    s_thread = UDPThread('UDP Port Thread', udp_recv_sock, screen, options.vhost, options.fwdhost, options.fwdport)
     s_thread.start()
     try:
         while True:

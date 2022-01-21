@@ -27,6 +27,7 @@ import threading
 import time
 import curses
 import re
+import socket
 import serial
 import time
 import hashlib
@@ -77,7 +78,7 @@ class SerialThread (threading.Thread):
     """
     ais_fields = ['type','mmsi','dest_mmsi','name','aid_type','lat','lon','valid']
 
-    def __init__(self, name, ser, screen, vhost):
+    def __init__(self, name: str, ser: serial.Serial, screen, vhost: str, fwdhost: str, fwdport: str):
         """
             The Serial Thread Constructor.
         """
@@ -89,6 +90,11 @@ class SerialThread (threading.Thread):
         self.msgDict = dict()
         self.fragDict = dict()
         self.vhost = vhost
+
+        # Initialise a forwarding operation if requested
+        self.fwd_host = fwdhost
+        self.fwd_port = int(fwdport) if fwdport else None
+        self.fwd_socket =  socket.socket(socket.AF_INET, socket.SOCK_DGRAM) if fwdhost and fwdport else None
 
         # Terminal window parameters
         self.counter = 0
@@ -234,6 +240,11 @@ class SerialThread (threading.Thread):
                 response = requests.post(url, data=payload, headers=headers)
                 if response.ok:
                     self.print_ais_field({"verified":"Yes"}, "verified", index)
+
+                    #Forward the message is a forwarding port is found
+                    if self.fwd_host and self.fwd_port:
+                        self.fwd_socket.sendto(bytes(messageEntry.data + '\r\n', "utf-8"), (self.fwd_host, self.fwd_port))
+
                     break
             except Exception as error:
                 pass # Nothing to do, verification just failed
@@ -330,7 +341,9 @@ def main(screen):
     parser.add_option("--port", help="The serial port to read the data from", default="/dev/ttyUSB0")
     parser.add_option("--baud", help="The serial port baud rate", default=38400)
     parser.add_option("--vhost", help="The verification server hostname", default="localhost:8764")
-
+    parser.add_option("--fwdhost", help="The host to forward verified messages", default="localhost")
+    parser.add_option("--fwdport", help="The post to forward verified messages", default=None)
+    
     # Parse the options
     (options, args) = parser.parse_args()
 
@@ -338,7 +351,7 @@ def main(screen):
     serial_port = serial.Serial(options.port, options.baud, timeout=0, parity=serial.PARITY_NONE, rtscts=1)
 
     # And start the serial thread
-    s_thread = SerialThread('Serial Port Thread', serial_port, screen, options.vhost)
+    s_thread = SerialThread('Serial Port Thread', serial_port, screen, options.vhost, options.fwdhost, options.fwdport)
     s_thread.start()
     try:
         while serial_port.is_open:
