@@ -231,7 +231,7 @@ class SerialThread (threading.Thread):
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signatures/mmsi/verify/{mmsi}'
             content = base64.b64encode(hashValue.digest()).decode('ascii')
-            signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:512])).decode('ascii')
+            signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:508] + message["data"][510:514])).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
             headers = {'content-type': 'application/json'}
 
