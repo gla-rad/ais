@@ -221,8 +221,8 @@ class SerialThread (threading.Thread):
             mmsi = messageEntry.msg.content['mmsi']
 
             # Only check for signature messages that come from the same mmsi
-            if mmsi != message['mmsi']:
-                continue
+            # if mmsi != message['mmsi']:
+            #     continue
 
             # Calculate the hash to be verified
             hashValue = hashlib.sha256()
@@ -231,7 +231,7 @@ class SerialThread (threading.Thread):
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signatures/mmsi/verify/{mmsi}'
             content = base64.b64encode(hashValue.digest()).decode('ascii')
-            signature = base64.b64encode(self.bitstring_to_bytes(message["data"])).decode('ascii')
+            signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:512])).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
             headers = {'content-type': 'application/json'}
 
