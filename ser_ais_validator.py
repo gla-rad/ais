@@ -29,12 +29,11 @@ import curses
 import re
 import socket
 import serial
-import time
 import hashlib
 import requests
 import base64
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Terminal Dashboard Library
 from curses import wrapper
@@ -254,7 +253,7 @@ class SerialThread (threading.Thread):
 
     def timestampCalculation(self, message: dict):
         # Figure out the current time (but no nanos)
-        now = datetime.now().replace(microsecond=0)
+        now = datetime.now().replace(tzinfo=timezone.utc).replace(microsecond=0)
 
         # If the message doesn't have a second, just return the now time
         if 'second' not in message:
