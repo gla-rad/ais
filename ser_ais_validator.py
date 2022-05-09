@@ -75,7 +75,7 @@ class SerialThread (threading.Thread):
         specified serial port. Then it filters out only the AIVDM sentences
         and places them to the loaded messages list.
     """
-    ais_fields = ['type','mmsi','dest_mmsi','name','aid_type','lat','lon','valid']
+    ais_fields = ['type','mmsi','dest_mmsi','name','aid_type','lat','lon','second','valid']
 
     def __init__(self, name: str, ser: serial.Serial, screen, vhost: str, fwdhost: str, fwdport: str):
         """
@@ -89,6 +89,7 @@ class SerialThread (threading.Thread):
         self.msgDict = dict()
         self.fragDict = dict()
         self.vhost = vhost
+        self.aisMsgCounter = 0
 
         # Initialise a forwarding operation if requested
         self.fwd_host = fwdhost
@@ -97,8 +98,8 @@ class SerialThread (threading.Thread):
 
         # Terminal window parameters
         self.counter = 0
-        self.max_lines = 40
-        self.max_columns = 116
+        self.max_lines = 20
+        self.max_columns = 131
 
         # lines, columns, start line, start column
         self.header_window = curses.newwin(9, self.max_columns, 0, 0)
@@ -112,9 +113,10 @@ class SerialThread (threading.Thread):
         self.header_window.addstr(2, 0, '#' + "SERIAL AIS MESSAGE VALIDATOR".center(self.max_columns - 2) + '#')
         self.header_window.addstr(3, 0, '#' + f"Currently monitoring serial port {self.ser.port}".center(self.max_columns - 2) + '#')
         self.header_window.addstr(4, 0, self.max_columns*'#')
-        self.header_window.addstr(6, 0, '|-----------------------------------------------------------------------------------------------------------------|')
-        self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |      Name      |          Aid Type          | Latitude | Longitude | Verified  |')
-        self.header_window.addstr(8, 0, '|-----------------------------------------------------------------------------------------------------------------|')
+        self.header_window.addstr(5, 0, ' Incoming AIS Messages: 0')
+        self.header_window.addstr(6, 0, '|--------------------------------------------------------------------------------------------------------------------------------|')
+        self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |       Name       |          Aid Type          | Latitude | Longitude |  Timestamp  | Verified |')
+        self.header_window.addstr(8, 0, '|--------------------------------------------------------------------------------------------------------------------------------|')
 
         # Print the window to the screen
         self.screen.clear()
@@ -132,7 +134,7 @@ class SerialThread (threading.Thread):
             reading = self.ser.readline().decode()
             reading = re.sub('\r\n', '', reading)
             self.handle_data(reading)
-            time.sleep(0.1)
+            time.sleep(0.05)
         self.ais_window.addstr(self.max_lines-1, 0, "Exiting... Please Wait...")
 
     def handle_data(self, data):
@@ -143,12 +145,14 @@ class SerialThread (threading.Thread):
         # Reset the line counter
         if self.counter >= self.max_lines:
             self.counter = 0
+            self.aisMsgCounter = 0
             self.msgDict.clear()
             self.ais_window.clear()
             self.info_window.clear()
 
         # Only plot AIVDM data
         if data.startswith('!AIVDM'):
+            self.updateAISMessageCounter()
             try:
                 # Initialise with an empty message object
                 message = None
@@ -204,6 +208,7 @@ class SerialThread (threading.Thread):
                         self.counter += 1
 
             except Exception as error:
+                self.showInfo(str(data))
                 self.showError(error)
 
         # And update the window
@@ -292,21 +297,30 @@ class SerialThread (threading.Thread):
             length = 9
         elif(field == 'name'):
             start = 33
-            length = 16
+            length = 18
         elif(field == 'aid_type'):
-            start = 50
+            start = 52
             length = 26
         elif(field == 'lat'):
-            start = 79
+            start = 81
             length = 8
         elif(field == 'lon'):
-            start = 90
+            start = 92
             length = 9
+        elif(field == 'second'):
+            start = 104
+            length = 11
+            value = str(self.msgDict[line].time)
         else:
-            start = 102
-            length = 9
+            start = 118
+            length = 8
         value = value[0:length] if len(value) > length else value
         self.ais_window.addstr(line, start, f'| {value:<{length}} |')
+
+    def updateAISMessageCounter(self):
+        self.aisMsgCounter = self.aisMsgCounter + 1
+        self.header_window.addstr(5, 24, f'{self.aisMsgCounter}')
+        self.header_window.refresh()
 
     def showInfo(self, infoMsg):
         output = str(infoMsg)[0:min(self.max_columns-7,len(str(infoMsg)))]
