@@ -134,7 +134,7 @@ class SerialThread (threading.Thread):
             reading = self.ser.readline().decode()
             reading = re.sub('\r\n', '', reading)
             self.handle_data(reading)
-            time.sleep(0.05)
+            time.sleep(0.01)
         self.ais_window.addstr(self.max_lines-1, 0, "Exiting... Please Wait...")
 
     def handle_data(self, data):
@@ -169,7 +169,7 @@ class SerialThread (threading.Thread):
                         fragmentId = int(msgParts[2])
 
                         # Initialise the entry if it does not exist
-                        if msgId not in self.fragDict:
+                        if fragmentId == 1:
                             self.fragDict[msgId] = []
 
                         # Append the received message into the array if it seems OK
@@ -235,6 +235,7 @@ class SerialThread (threading.Thread):
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signatures/mmsi/verify/{mmsi}'
             content = base64.b64encode(hashValue.digest()).decode('ascii')
+            #signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:512])).decode('ascii')
             signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:508] + message["data"][510:514])).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
             headers = {'content-type': 'application/json'}
@@ -361,7 +362,7 @@ def main(screen):
     (options, args) = parser.parse_args()
 
     # Open the serial port
-    serial_port = serial.Serial(options.port, options.baud, timeout=0, parity=serial.PARITY_NONE, rtscts=1)
+    serial_port = serial.Serial(options.port, options.baud, timeout=None, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, rtscts=1)
 
     # And start the serial thread
     s_thread = SerialThread('Serial Port Thread', serial_port, screen, options.vhost, options.fwdhost, options.fwdport)

@@ -178,7 +178,7 @@ class UDPThread (threading.Thread):
                         fragmentId = int(msgParts[2])
 
                         # Initialise the entry if it does not exist
-                        if msgId not in self.fragDict:
+                        if fragmentId == 1:
                             self.fragDict[msgId] = []
 
                         # Append the received message into the array if it seems OK
