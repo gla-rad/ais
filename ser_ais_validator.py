@@ -226,15 +226,11 @@ class SerialThread (threading.Thread):
 
             # Only check for signature messages that come from the same mmsi
             # if mmsi != message['mmsi']:
-            #     continue
-
-            # Calculate the hash to be verified
-            hashValue = hashlib.sha256()
-            hashValue.update(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big'))            
+            #     continue      
             
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signatures/mmsi/verify/{mmsi}'
-            content = base64.b64encode(hashValue.digest()).decode('ascii')
+            content = base64.b64encode(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
             #signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:512])).decode('ascii')
             signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:508] + message["data"][510:514])).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
