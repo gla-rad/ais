@@ -196,7 +196,7 @@ class UDPThread (threading.Thread):
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
                             if type(message) in [MessageType6, MessageType8] and "data" in message.content and len(message.content["data"]) in [512, 514]:
-                                self.handle_authorization_message(message.content)
+                                self.handle_authorization_message(message.asdict())
 
                             # And delete the fragment entry
                             del self.fragDict[msgId]
@@ -210,10 +210,10 @@ class UDPThread (threading.Thread):
                     if message and type(message) == MessageType21:
                         # If successful and this is not a data message, add the message
                         # into a map, we might need to validate it
-                        self.msgDict[self.counter] = MsgEntry(message, data, self.timestampCalculation(message.content))
+                        self.msgDict[self.counter] = MsgEntry(message, data, self.timestampCalculation(message.asdict))
                         # Now print the message fields in the dashboard
                         for field in self.ais_fields:
-                            self.print_ais_field(message.content, field, self.counter%(self.max_lines-1))
+                            self.print_ais_field(message.asdict(), field, self.counter%(self.max_lines-1))
                         # And increase the line counter
                         self.counter += 1
 
@@ -361,7 +361,7 @@ def main(screen):
 
     desc="""Use this tool to validate the AIVDM sentences received through a UDP port."""
     parser = OptionParser(description=desc)
-    parser.add_option("--port", help="The UDP port to read the data from", default="60021")
+    parser.add_option("--port", help="The UDP port to read the data from", default="2947")
     parser.add_option("--vhost", help="The verification server hostname", default="localhost:8764")
     parser.add_option("--fwdhost", help="The host to forward verified messages", default="127.0.0.1")
     parser.add_option("--fwdport", help="The post to forward verified messages", default=None)
