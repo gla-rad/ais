@@ -187,7 +187,7 @@ class SerialThread (threading.Thread):
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
                             if type(message) in [MessageType6, MessageType8] and "data" in message.content and len(message.content["data"]) in [512, 514]:
-                                self.handle_authorization_message(message.asdict())
+                                self.handle_authorization_message(message.content)
 
                             # And delete the fragment entry
                             del self.fragDict[msgId]
@@ -201,10 +201,10 @@ class SerialThread (threading.Thread):
                     if message and type(message) == MessageType21:
                         # If successful and this is not a data message, add the message
                         # into a map, we might need to validate it
-                        self.msgDict[self.counter] = MsgEntry(message, data, self.timestampCalculation(message.asdict()))
+                        self.msgDict[self.counter] = MsgEntry(message, data, self.timestampCalculation(message.content))
                         # Now print the message fields in the dashboard
                         for field in self.ais_fields:
-                            self.print_ais_field(message.asdict(), field, self.counter%(self.max_lines-1))
+                            self.print_ais_field(message.content, field, self.counter%(self.max_lines-1))
                         # And increase the line counter
                         self.counter += 1
 
