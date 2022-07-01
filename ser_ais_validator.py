@@ -39,19 +39,18 @@ from datetime import datetime, timezone
 from curses import wrapper
 
 # Python AIS Library Import
-from pyais import NMEAMessage
-from pyais.messages import MessageType6, MessageType8, MessageType21
+from pyais import AISMessage, NMEAMessage
 
 class MsgEntry:
     """
         A structure to contain the received AIS messages and their relevant
         data, such as the reception time.
     """
-    msg: MessageType21
+    msg: AISMessage
     data: str
     time: float
 
-    def __init__(self, msg: MessageType21, data: str, time: float):
+    def __init__(self, msg: AISMessage, data: str, time: float):
         self.msg = msg
         self.data = data
         self.time = time
@@ -186,7 +185,7 @@ class SerialThread (threading.Thread):
                             ).decode()
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
-                            if type(message) in [MessageType6, MessageType8] and "data" in message.content and len(message.content["data"]) in [512, 514]:
+                            if "data" in message.content and len(message.content["data"]) in [512, 514]:
                                 self.handle_authorization_message(message.content)
 
                             # And delete the fragment entry
@@ -198,7 +197,7 @@ class SerialThread (threading.Thread):
                             ).decode()
 
                     # Only print the non data messages, cause data might have signatures
-                    if message and type(message) == MessageType21:
+                    if message and type(message) == AISMessage: #and message['type'] not in [6, 8]:
                         # If successful and this is not a data message, add the message
                         # into a map, we might need to validate it
                         self.msgDict[self.counter] = MsgEntry(message, data, self.timestampCalculation(message.content))
