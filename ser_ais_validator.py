@@ -229,7 +229,7 @@ class SerialThread (threading.Thread):
             #     continue      
             
             # Build the HTTP call to verify the message
-            url = f'http://{self.vhost}/api/signatures/mmsi/verify/{mmsi}'
+            url = f'http://{self.vhost}/api/signature/mmsi/verify/{mmsi}'
             content = base64.b64encode(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
             #signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:512])).decode('ascii')
             signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:508] + message["data"][510:514])).decode('ascii')
