@@ -4,7 +4,7 @@ category: '[aistx]'
 
 templates:
   imports: from gnuradio import aistx
-  make: aistx.Build_Frame(${*sentence}, ${repeat}, ${enable_NRZI})
+  make: aistx.Build_Frame(${sentence}, ${repeat}, ${enable_NRZI})
 
 #  Make one 'parameters' list entry for every parameter you want settable from the GUI.
 #     Keys include:
