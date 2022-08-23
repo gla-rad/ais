@@ -5,22 +5,22 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#ifndef INCLUDED_AISTX_DEBUGME_IMPL_H
-#define INCLUDED_AISTX_DEBUGME_IMPL_H
+#ifndef INCLUDED_AISTX_NRZ_TO_NRZI_IMPL_H
+#define INCLUDED_AISTX_NRZ_TO_NRZI_IMPL_H
 
-#include <gnuradio/aistx/DebugME.h>
+#include <gnuradio/aistx/nrz_to_nrzi.h>
 
 namespace gr {
 namespace aistx {
 
-class DebugME_impl : public DebugME
+class nrz_to_nrzi_impl : public nrz_to_nrzi
 {
 private:
-    size_t d_itemsize;
+    // Nothing to declare in this block.
 
 public:
-    DebugME_impl(size_t itemsize);
-    ~DebugME_impl();
+    nrz_to_nrzi_impl();
+    ~nrz_to_nrzi_impl();
 
     // Where all the action really happens
     void forecast(int noutput_items, gr_vector_int& ninput_items_required);
@@ -34,4 +34,4 @@ public:
 } // namespace aistx
 } // namespace gr
 
-#endif /* INCLUDED_AISTX_DEBUGME_IMPL_H */
+#endif /* INCLUDED_AISTX_NRZ_TO_NRZI_IMPL_H */

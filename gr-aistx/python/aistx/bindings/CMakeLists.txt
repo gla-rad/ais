@@ -32,7 +32,8 @@ list(APPEND aistx_python_files
     udp_source_vb_python.cc
     Build_Frame_python.cc
     Build_Input_Frame_python.cc
-    DebugME_python.cc python_bindings.cc)
+    DebugME_python.cc
+    nrz_to_nrzi_python.cc python_bindings.cc)
 
 GR_PYBIND_MAKE_OOT(aistx
    ../../..

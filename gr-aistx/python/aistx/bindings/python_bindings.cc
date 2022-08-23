@@ -27,6 +27,7 @@ namespace py = pybind11;
     void bind_nrz_to_nrzi(py::module& m);
     void bind_DebugME(py::module& m);
     void bind_DebugME(py::module& m);
+    void bind_nrz_to_nrzi(py::module& m);
 // ) END BINDING_FUNCTION_PROTOTYPES
 
 
@@ -59,5 +60,6 @@ PYBIND11_MODULE(aistx_python, m)
     bind_Build_Frame(m);
     bind_Build_Input_Frame(m);
     bind_DebugME(m);
+    bind_nrz_to_nrzi(m);
     // ) END BINDING_FUNCTION_CALLS
 }

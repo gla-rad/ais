@@ -14,5 +14,6 @@ install(FILES
     udp_source_vb.h
     Build_Frame.h
     Build_Input_Frame.h
-    DebugME.h DESTINATION include/gnuradio/aistx
+    DebugME.h
+    nrz_to_nrzi.h DESTINATION include/gnuradio/aistx
 )
