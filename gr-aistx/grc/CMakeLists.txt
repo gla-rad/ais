@@ -9,5 +9,6 @@
 install(FILES
     aistx_udp_source_vb.block.yml
     aistx_Build_Frame.block.yml
-    aistx_Build_Input_Frame.block.yml DESTINATION share/gnuradio/grc/blocks
+    aistx_Build_Input_Frame.block.yml
+    aistx_DebugME.block.yml DESTINATION share/gnuradio/grc/blocks
 )

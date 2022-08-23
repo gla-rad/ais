@@ -15,6 +15,7 @@ list(APPEND aistx_sources
     udp_source_vb_impl.cc
     Build_Frame_impl.cc
     Build_Input_Frame_impl.cc
+    DebugME_impl.cc
 )
 
 set(aistx_sources "${aistx_sources}" PARENT_SCOPE)

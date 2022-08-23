@@ -13,5 +13,6 @@ install(FILES
     api.h
     udp_source_vb.h
     Build_Frame.h
-    Build_Input_Frame.h DESTINATION include/gnuradio/aistx
+    Build_Input_Frame.h
+    DebugME.h DESTINATION include/gnuradio/aistx
 )
