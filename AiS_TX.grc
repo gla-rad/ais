@@ -1,6 +1,7 @@
 options:
   parameters:
     author: ''
+    catch_exceptions: 'True'
     category: Custom
     cmake_opt: ''
     comment: ''
@@ -68,8 +69,8 @@ blocks:
     coordinate: [192, 4]
     rotation: 0
     state: enabled
-- name: AISTX_Build_Frame_0
-  id: AISTX_Build_Frame
+- name: aistx_Build_Frame_0
+  id: aistx_Build_Frame
   parameters:
     affinity: ''
     alias: ''
@@ -83,11 +84,11 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [3, 113]
+    coordinate: [0, 132.0]
     rotation: 0
-    state: enabled
-- name: AISTX_Build_Frame_1
-  id: AISTX_Build_Frame
+    state: true
+- name: aistx_Build_Frame_1
+  id: aistx_Build_Frame
   parameters:
     affinity: ''
     alias: ''
@@ -101,9 +102,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2, 336]
+    coordinate: [0, 348.0]
     rotation: 0
-    state: enabled
+    state: true
 - name: analog_sig_source_x_0
   id: analog_sig_source_x
   parameters:
@@ -304,6 +305,7 @@ blocks:
     alias: ''
     bt: '0.4'
     comment: ''
+    do_unpack: 'True'
     log: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -323,6 +325,7 @@ blocks:
     alias: ''
     bt: '0.4'
     comment: ''
+    do_unpack: 'True'
     log: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -775,6 +778,38 @@ blocks:
     gain7: '0'
     gain8: '0'
     gain9: '0'
+    gain_type0: default
+    gain_type1: default
+    gain_type10: default
+    gain_type11: default
+    gain_type12: default
+    gain_type13: default
+    gain_type14: default
+    gain_type15: default
+    gain_type16: default
+    gain_type17: default
+    gain_type18: default
+    gain_type19: default
+    gain_type2: default
+    gain_type20: default
+    gain_type21: default
+    gain_type22: default
+    gain_type23: default
+    gain_type24: default
+    gain_type25: default
+    gain_type26: default
+    gain_type27: default
+    gain_type28: default
+    gain_type29: default
+    gain_type3: default
+    gain_type30: default
+    gain_type31: default
+    gain_type4: default
+    gain_type5: default
+    gain_type6: default
+    gain_type7: default
+    gain_type8: default
+    gain_type9: default
     len_tag_name: ''
     lo_export0: 'False'
     lo_export1: 'False'
@@ -843,38 +878,6 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     nchan: '1'
-    norm_gain0: 'False'
-    norm_gain1: 'False'
-    norm_gain10: 'False'
-    norm_gain11: 'False'
-    norm_gain12: 'False'
-    norm_gain13: 'False'
-    norm_gain14: 'False'
-    norm_gain15: 'False'
-    norm_gain16: 'False'
-    norm_gain17: 'False'
-    norm_gain18: 'False'
-    norm_gain19: 'False'
-    norm_gain2: 'False'
-    norm_gain20: 'False'
-    norm_gain21: 'False'
-    norm_gain22: 'False'
-    norm_gain23: 'False'
-    norm_gain24: 'False'
-    norm_gain25: 'False'
-    norm_gain26: 'False'
-    norm_gain27: 'False'
-    norm_gain28: 'False'
-    norm_gain29: 'False'
-    norm_gain3: 'False'
-    norm_gain30: 'False'
-    norm_gain31: 'False'
-    norm_gain4: 'False'
-    norm_gain5: 'False'
-    norm_gain6: 'False'
-    norm_gain7: 'False'
-    norm_gain8: 'False'
-    norm_gain9: 'False'
     num_mboards: '1'
     otw: ''
     samp_rate: samp_rate
@@ -887,6 +890,7 @@ blocks:
     sd_spec6: ''
     sd_spec7: ''
     show_lo_controls: 'False'
+    start_time: '-1.0'
     stream_args: ''
     stream_chans: '[]'
     sync: pc_clock
@@ -908,8 +912,8 @@ blocks:
     state: enabled
 
 connections:
-- [AISTX_Build_Frame_0, '0', digital_gmsk_mod_0, '0']
-- [AISTX_Build_Frame_1, '0', digital_gmsk_mod_0_0, '0']
+- [aistx_Build_Frame_0, '0', digital_gmsk_mod_0, '0']
+- [aistx_Build_Frame_1, '0', digital_gmsk_mod_0_0, '0']
 - [analog_sig_source_x_0, '0', blocks_multiply_xx_0, '1']
 - [analog_sig_source_x_0_0, '0', blocks_multiply_xx_0_0, '1']
 - [blocks_add_xx_0, '0', blocks_selector_0, '2']
