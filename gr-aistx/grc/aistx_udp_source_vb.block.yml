@@ -1,0 +1,49 @@
+id: aistx_udp_source_vb
+label: udp_source_vb
+category: '[aistx]'
+
+templates:
+  imports: from gnuradio import aistx
+  make: aistx.udp_source_vb(${type.size}*${vlen}, ${ipaddr}, ${port}, ${psize}, ${eof})
+
+parameters:
+-   id: type
+    label: Output Type
+    dtype: enum
+    options: [complex, float, int, short, byte]
+    option_attributes:
+        size: [gr.sizeof_gr_complex, gr.sizeof_float, gr.sizeof_int, gr.sizeof_short, gr.sizeof_char]
+    hide: part
+-   id: ipaddr
+    label: IP Address
+    dtype: string
+    default: 127.0.0.1
+-   id: port
+    label: Port
+    dtype: int
+    default: '1234'
+-   id: psize
+    label: Payload Size
+    dtype: int
+    default: '1472'
+-   id: eof
+    label: Null Pkt is EOF
+    dtype: bool
+    default: 'True'
+-   id: vlen
+    label: Vec Length
+    dtype: int
+    default: '1'
+    hide: ${ 'part' if vlen == 1 else 'none' }
+
+outputs:
+-   domain: stream
+    dtype: ${ type }
+    vlen: ${ vlen }
+
+asserts:
+- ${ vlen > 0 }
+
+#  'file_format' specifies the version of the GRC yml format used in the file
+#  and should usually not be changed.
+file_format: 1

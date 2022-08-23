@@ -8,3 +8,4 @@ top_block.py
 # build dirs
 build
 **/build/
+**/gr-aistx-3.8/
