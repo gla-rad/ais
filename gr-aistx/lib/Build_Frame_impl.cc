@@ -40,7 +40,7 @@
 #define DEBUG 0
 
 namespace gr {
-  namespace AISTX {
+  namespace aistx {
 
     Build_Frame::sptr
     Build_Frame::make(const char *sentence, bool repeat, bool enable_NRZI)

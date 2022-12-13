@@ -21,12 +21,12 @@
 #ifndef INCLUDED_AISTX_BUILD_FRAME_IMPL_H
 #define INCLUDED_AISTX_BUILD_FRAME_IMPL_H
 
-#include <AISTX/Build_Frame.h>
+#include <gnuradio/aistx/Build_Frame.h>
 
 #define __VERSION 0.3
 
 namespace gr {
-  namespace AISTX {
+  namespace aistx {
 
     class Build_Frame_impl : public Build_Frame
     {

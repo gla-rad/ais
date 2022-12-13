@@ -21,10 +21,10 @@
 #ifndef INCLUDED_AISTX_DEBUGME_IMPL_H
 #define INCLUDED_AISTX_DEBUGME_IMPL_H
 
-#include <AISTX/DebugME.h>
+#include <gnuradio/aistx/DebugME.h>
 
 namespace gr {
-  namespace AISTX {
+  namespace aistx {
 
     class DebugME_impl : public DebugME
     {

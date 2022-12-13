@@ -27,7 +27,7 @@
 #include <stdio.h>
 
 namespace gr {
-  namespace AISTX {
+  namespace aistx {
 
     nrz_to_nrzi::sptr
     nrz_to_nrzi::make()
