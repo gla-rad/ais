@@ -21,10 +21,10 @@
 #ifndef INCLUDED_AISTX_NRZ_TO_NRZI_IMPL_H
 #define INCLUDED_AISTX_NRZ_TO_NRZI_IMPL_H
 
-#include <AISTX/nrz_to_nrzi.h>
+#include <gnuradio/aistx/nrz_to_nrzi.h>
 
 namespace gr {
-  namespace AISTX {
+  namespace aistx {
 
     class nrz_to_nrzi_impl : public nrz_to_nrzi
     {

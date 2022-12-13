@@ -27,7 +27,7 @@
 #include <stdio.h>
 
 namespace gr {
-  namespace AISTX {
+  namespace aistx {
 
     DebugME::sptr
     DebugME::make(size_t itemsize)
