@@ -138,10 +138,13 @@ class UDPThread (threading.Thread):
                 else:
                     self.showError(error)
             else:
-                reading = data.decode('ascii')
-                reading = reading[reading.rindex('!AIVDM'):]
-                reading = re.sub('\r\n', '', reading)
-                self.handle_data(reading)
+                try:
+                    reading = data.decode('ascii')
+                    reading = reading[reading.rindex('!AIVDM'):]
+                    reading = re.sub('\r\n', '', reading)
+                    self.handle_data(reading)
+                except ValueError as error:
+                    pass    
 
         self.ais_window.addstr(self.max_lines-1, 0, "Exiting... Please Wait...")
 
@@ -237,13 +240,9 @@ class UDPThread (threading.Thread):
             # if mmsi != message['mmsi']:
             #     continue
 
-            # Calculate the hash to be verified
-            hashValue = hashlib.sha256()
-            hashValue.update(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big'))            
-
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signature/mmsi/verify/{mmsi}'
-            content = base64.b64encode(hashValue.digest()).decode('ascii')
+            content = base64.b64encode(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
             signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:512])).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
             headers = {'content-type': 'application/json'}
@@ -285,7 +284,7 @@ class UDPThread (threading.Thread):
         if txTimestamp > now:
             txTimestamp.replace(minute=txTimestamp.minute-1)
 
-        # And return the vau
+        # And return the value
         return int(txTimestamp.timestamp())
     
     def bitstring_to_bytes(self, s: str):
