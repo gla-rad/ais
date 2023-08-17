@@ -257,7 +257,7 @@ class SerialThread (threading.Thread):
 
     def timestampCalculation(self, message: dict):
         # Figure out the current time (but no nanos)
-        now = datetime.now().replace(tzinfo=timezone.utc).replace(microsecond=0)
+        now = datetime.now(timezone.utc).replace(microsecond=0)
 
         # If the message doesn't have a second, just return the now time
         if 'second' not in message:
