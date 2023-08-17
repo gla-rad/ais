@@ -234,7 +234,7 @@ class SerialThread (threading.Thread):
             # For AIS-RX Pro
             signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:512])).decode('ascii')
             # For VDES-1000
-            #signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:508] + message["data"][510:512])).decode('ascii')
+            #signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:508] + message["data"][510:514])).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
             headers = {'content-type': 'application/json'}
 
