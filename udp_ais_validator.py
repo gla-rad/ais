@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# Copyright (c) 2021 GLA UK Research and Development Directive.
+# Copyright (c) 2024 GLA UK Research and Development Directive.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); 
 # you may not use this file except in compliance with the License. 
@@ -13,13 +13,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
 # See the License for the specific language governing permissions and 
 # limitations under the License.
-#
 # 
 # First install the required packages:
 # $ sudo pip install pyais
 #
 # Usage Examples:
-# $ sudo ./udp_ais_validator --port=60022
+# $ sudo ./udp_ais_validator --port=60041 --vhost=localhost:8764
 
 import threading
 import time
@@ -37,7 +36,9 @@ from datetime import datetime, timezone
 from curses import wrapper
 
 # Python AIS Library Import
-from pyais import AISMessage, NMEAMessage
+from pyais import decode
+from pyais.messages import AISSentence, MessageType21
+from pyais.messages import ANY_MESSAGE as AISMessage
 
 class MsgEntry:
     """
@@ -45,12 +46,12 @@ class MsgEntry:
         data, such as the reception time.
     """
     msg: AISMessage
-    data: str
+    nmea: AISSentence
     time: float
 
-    def __init__(self, msg: AISMessage, data: str, time: float):
+    def __init__(self, msg: AISMessage, nmea: AISSentence, time: float):
         self.msg = msg
-        self.data = data
+        self.nmea = nmea
         self.time = time
 
 class FragmentEntry:
@@ -60,12 +61,12 @@ class FragmentEntry:
     """
     msgId: int
     fragmentIndex: int
-    data: str
+    nmea: AISSentence
 
-    def __init__(self, id: int, index: int, data: str):
+    def __init__(self, id: int, index: int, nmea: AISSentence):
         self.msgId = id
         self.fragmentId = index
-        self.data = data
+        self.nmea = nmea
 
 class UDPThread (threading.Thread):
     """
@@ -73,7 +74,17 @@ class UDPThread (threading.Thread):
         specified socket port. Then it filters out only the AIVDM sentences
         and places them to the loaded messages list.
     """
-    ais_fields = ['type','mmsi','dest_mmsi','name','aid_type','lat','lon','second','valid']
+    ais_fields = [
+        'msg_type',
+        'mmsi',
+        'dest_mmsi',
+        'name',
+        'aid_type',
+        'lat',
+        'lon',
+        'second',
+        'valid'
+    ]
 
     def __init__(self, name: str, rcv_socket: socket, screen, vhost: str, fwdhost: str, fwdport: str):
         """
@@ -161,61 +172,60 @@ class UDPThread (threading.Thread):
             self.ais_window.clear()
             self.info_window.clear()
 
-        # Only plot AIVDM data
+        # For AIVDM messages
         if data.startswith('!AIVDM'):
             self.updateAISMessageCounter()
             try:
+                
                 # Initialise with an empty message object
                 message = None
 
-                # Try to pick up message sequences but checking the fragment count
-                msgParts = data.split(',')
+                # Parse the received sentence
+                sentence = AISSentence(data.encode('utf-8'))
                 
-                # For valid NMEA sentences 
-                if len(msgParts) == 7:
+                # For valid AIS NMEA sentences 
+                if sentence:
                     
                     # Decode the message according to whether it has fragments or not
-                    sequenceNo = int(msgParts[1])
-                    if sequenceNo > 1:
-                        msgId = int(msgParts[3])
-                        fragmentId = int(msgParts[2])
-
+                    fragmentCount = sentence.frag_cnt
+                    if fragmentCount > 1:
+                        fragmentId = sentence.frag_num
+                        sequenceId = sentence.seq_id
+                        
                         # Initialise the entry if it does not exist
                         if fragmentId == 1:
-                            self.fragDict[msgId] = []
+                            self.fragDict[sequenceId] = []
 
                         # Append the received message into the array if it seems OK
-                        if len(list(filter(lambda msg: msg.fragmentId == fragmentId, self.fragDict[msgId]))) == 0:
-                            self.fragDict[msgId].append(FragmentEntry(msgId, fragmentId, data))
+                        if len(list(filter(lambda msg: msg.fragmentId == fragmentId, self.fragDict[sequenceId]))) == 0:
+                            self.fragDict[sequenceId].append(FragmentEntry(sequenceId, fragmentId, sentence))
 
                         # Note to the user that a sequence was picked up
-                        if len(self.fragDict[msgId]) == sequenceNo:
-                            message = NMEAMessage.assemble_from_iterable(
+                        if len(self.fragDict[sequenceId]) == fragmentCount:
+                            message = AISSentence.assemble_from_iterable(
                                 messages=list(
-                                    map(lambda msg: NMEAMessage(msg.data.encode('utf-8')), self.fragDict[msgId])
+                                    map(lambda msg: msg.nmea, self.fragDict[sequenceId])
                                 )
                             ).decode()
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
-                            if "data" in message.content and len(message.content["data"]) in [512, 514]:
-                                self.handle_authorization_message(message.content)
+                            if message and message.data and len(message.data)*8 in [512, 514]:
+                                self.handle_authorization_message(message)
 
                             # And delete the fragment entry
-                            del self.fragDict[msgId]
+                            del self.fragDict[sequenceId]
                     else:
                         # Decode the message
-                        message = NMEAMessage.assemble_from_iterable(
-                                messages=[NMEAMessage(data.encode('utf-8'))]
-                            ).decode()
+                        message = decode(data)
 
                     # Only print the non data messages, cause data might have signatures
-                    if message and type(message) == AISMessage: #and message['type'] not in [6, 8]:
+                    if isinstance(message, MessageType21): #and message['type'] not in [6, 8]:
                         # If successful and this is not a data message, add the message
                         # into a map, we might need to validate it
-                        self.msgDict[self.counter] = MsgEntry(message, data, self.timestampCalculation(message.content))
+                        self.msgDict[self.counter] = MsgEntry(message, sentence, self.timestampCalculation(message.asdict()))
                         # Now print the message fields in the dashboard
                         for field in self.ais_fields:
-                            self.print_ais_field(message.content, field, self.counter%(self.max_lines-1))
+                            self.print_ais_field(message.asdict(), field, self.counter%(self.max_lines-1))
                         # And increase the line counter
                         self.counter += 1
 
@@ -226,15 +236,15 @@ class UDPThread (threading.Thread):
         # And update the window
         self.ais_window.refresh()
         
-    def handle_authorization_message(self, message: dict):  
+    def handle_authorization_message(self, message: AISMessage):  
         # Look for a message that matches the signature
         for index in range(len(self.msgDict)-1, -1, -1):
             messageEntry = self.msgDict[index]
-            nmeaMessage = messageEntry.msg.nmea
-            nmeaLength = int(len(nmeaMessage.bit_array)) - int(nmeaMessage.fill_bits)
+            nmeaSentence = messageEntry.nmea
+            nmeaLength = len(nmeaSentence.bit_array) - nmeaSentence.fill_bits
 
             # Get the device MMSI from the message content
-            mmsi = messageEntry.msg.content['mmsi']
+            mmsi = messageEntry.msg.mmsi
 
             # Only check for signature messages that come from the same mmsi
             # if mmsi != message['mmsi']:
@@ -242,8 +252,8 @@ class UDPThread (threading.Thread):
 
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signature/mmsi/verify/{mmsi}'
-            content = base64.b64encode(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
-            signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:512])).decode('ascii')
+            content = base64.b64encode(nmeaSentence.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
+            signature = base64.b64encode(message.data).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
             headers = {'content-type': 'application/json'}
 
@@ -294,7 +304,7 @@ class UDPThread (threading.Thread):
         value = str(message[field] if field in message else ' ')
         start = 0
         length = 0
-        if(field == 'type'):
+        if(field == 'msg_type'):
             start = 0
             length = 4
         elif(field == 'mmsi'):
@@ -359,7 +369,7 @@ def main(screen):
 
     desc="""Use this tool to validate the AIVDM sentences received through a UDP port."""
     parser = OptionParser(description=desc)
-    parser.add_option("--port", help="The UDP port to read the data from", default="60021")
+    parser.add_option("--port", help="The UDP port to read the data from", default="60041")
     parser.add_option("--vhost", help="The verification server hostname", default="localhost:8764")
     parser.add_option("--fwdhost", help="The host to forward verified messages", default="127.0.0.1")
     parser.add_option("--fwdport", help="The post to forward verified messages", default=None)
