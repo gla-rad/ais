@@ -241,7 +241,6 @@ class UDPThread (threading.Thread):
         for index in range(len(self.msgDict)-1, -1, -1):
             messageEntry = self.msgDict[index]
             nmeaSentence = messageEntry.nmea
-            nmeaLength = len(nmeaSentence.bit_array) - nmeaSentence.fill_bits
 
             # Get the device MMSI from the message content
             mmsi = messageEntry.msg.mmsi
@@ -252,7 +251,7 @@ class UDPThread (threading.Thread):
 
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signature/mmsi/verify/{mmsi}'
-            content = base64.b64encode(nmeaSentence.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
+            content = base64.b64encode(nmeaSentence.bit_array.tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
             signature = base64.b64encode(message.data).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
             headers = {'content-type': 'application/json'}
