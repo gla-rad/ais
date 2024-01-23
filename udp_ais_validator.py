@@ -264,8 +264,7 @@ class UDPThread (threading.Thread):
 
                     #Forward the message is a forwarding port is found
                     if self.fwd_host and self.fwd_port:
-                        self.fwd_socket.sendto(bytes(messageEntry.data + '\r\n', "utf-8"), (self.fwd_host, self.fwd_port))
-
+                        self.fwd_socket.sendto(nmeaSentence.raw, (self.fwd_host, self.fwd_port))
                     break
             except Exception as error:
                 pass # Nothing to do, verification just failed
