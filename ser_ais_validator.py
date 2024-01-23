@@ -39,7 +39,9 @@ from datetime import datetime, timezone
 from curses import wrapper
 
 # Python AIS Library Import
-from pyais import AISMessage, NMEAMessage
+from pyais import decode
+from pyais.messages import AISSentence, MessageType21
+from pyais.messages import ANY_MESSAGE as AISMessage
 
 class MsgEntry:
     """
@@ -47,12 +49,12 @@ class MsgEntry:
         data, such as the reception time.
     """
     msg: AISMessage
-    data: str
+    nmea: AISSentence
     time: float
 
-    def __init__(self, msg: AISMessage, data: str, time: float):
+    def __init__(self, msg: AISMessage, nmea: AISSentence, time: float):
         self.msg = msg
-        self.data = data
+        self.data = nmea
         self.time = time
 
 class FragmentEntry:
@@ -62,12 +64,12 @@ class FragmentEntry:
     """
     msgId: int
     fragmentIndex: int
-    data: str
+    nmea: AISSentence
 
-    def __init__(self, id: int, index: int, data: str):
+    def __init__(self, id: int, index: int, nmea: AISSentence):
         self.msgId = id
         self.fragmentId = index
-        self.data = data
+        self.nmea = nmea
 
 class SerialThread (threading.Thread):
     """
@@ -75,7 +77,17 @@ class SerialThread (threading.Thread):
         specified serial port. Then it filters out only the AIVDM sentences
         and places them to the loaded messages list.
     """
-    ais_fields = ['type','mmsi','dest_mmsi','name','aid_type','lat','lon','second','valid']
+    ais_fields = [
+        'msg_type',
+        'mmsi',
+        'dest_mmsi',
+        'name',
+        'aid_type',
+        'lat',
+        'lon',
+        'second',
+        'valid'
+    ]
 
     def __init__(self, name: str, ser: serial.Serial, screen, vhost: str, fwdhost: str, fwdport: str):
         """
@@ -135,6 +147,7 @@ class SerialThread (threading.Thread):
             reading = re.sub('\r\n', '', reading)
             self.handle_data(reading)
             time.sleep(0.01)
+        
         self.ais_window.addstr(self.max_lines-1, 0, "Exiting... Please Wait...")
 
     def handle_data(self, data):
@@ -157,50 +170,48 @@ class SerialThread (threading.Thread):
                 # Initialise with an empty message object
                 message = None
 
-                # Try to pick up message sequences but checking the fragment count
-                msgParts = data.split(',')
+                # Parse the received sentence
+                sentence = AISSentence(data.encode('utf-8'))
 
                 # For valid NMEA sentences 
-                if len(msgParts) == 7:
+                if sentence:
                     # Decode the message according to whether it has fragments or not
-                    sequenceNo = int(msgParts[1])
-                    if sequenceNo > 1:
-                        msgId = int(msgParts[3])
-                        fragmentId = int(msgParts[2])
+                    fragmentCount = sentence.frag_cnt
+                    if fragmentCount > 1:
+                        sequenceId = sentence.frag_num
+                        sequenceId = sentence.seq_id
 
                         # Initialise the entry if it does not exist
-                        if fragmentId == 1:
-                            self.fragDict[msgId] = []
+                        if sequenceId == 1:
+                            self.fragDict[sequenceId] = []
 
                         # Append the received message into the array if it seems OK
-                        if len(list(filter(lambda msg: msg.fragmentId == fragmentId, self.fragDict[msgId]))) == 0:
-                            self.fragDict[msgId].append(FragmentEntry(msgId, fragmentId, data))
+                        if len(list(filter(lambda msg: msg.fragmentId == sequenceId, self.fragDict[sequenceId]))) == 0:
+                            self.fragDict[sequenceId].append(FragmentEntry(sequenceId, sequenceId, sentence))
 
                         # Note to the user that a sequence was picked up
-                        if len(self.fragDict[msgId]) == sequenceNo:
-                            message = NMEAMessage.assemble_from_iterable(
+                        if len(self.fragDict[sequenceId]) == fragmentCount:
+                            message = AISSentence.assemble_from_iterable(
                                 messages=list(
-                                    map(lambda msg: NMEAMessage(msg.data.encode('utf-8')), self.fragDict[msgId])
+                                    map(lambda msg: msg.nmea, self.fragDict[sequenceId])
                                 )
                             ).decode()
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
-                            if "data" in message.content and len(message.content["data"]) in [512, 514]:
-                                self.handle_authorization_message(message.content)
+                            if message and message.data and len(message.data)*8 in [512, 514]:
+                                self.handle_authorization_message(message)
 
                             # And delete the fragment entry
-                            del self.fragDict[msgId]
+                            del self.fragDict[sequenceId]
                     else:
                         # Decode the message
-                        message = NMEAMessage.assemble_from_iterable(
-                                messages=[NMEAMessage(data.encode('utf-8'))]
-                            ).decode()
+                        message = decode(data)
 
                     # Only print the non data messages, cause data might have signatures
-                    if message and type(message) == AISMessage: #and message['type'] not in [6, 8]:
+                    if isinstance(message, MessageType21): #and message['type'] not in [6, 8]:
                         # If successful and this is not a data message, add the message
                         # into a map, we might need to validate it
-                        self.msgDict[self.counter] = MsgEntry(message, data, self.timestampCalculation(message.content))
+                        self.msgDict[self.counter] = MsgEntry(message, sentence, self.timestampCalculation(message.content))
                         # Now print the message fields in the dashboard
                         for field in self.ais_fields:
                             self.print_ais_field(message.content, field, self.counter%(self.max_lines-1))
@@ -214,15 +225,15 @@ class SerialThread (threading.Thread):
         # And update the window
         self.ais_window.refresh()
         
-    def handle_authorization_message(self, message: dict):  
+    def handle_authorization_message(self, message: AISMessage):  
         # Look for a message that matches the signature
         for index in range(len(self.msgDict)-1, -1, -1):
             messageEntry = self.msgDict[index]
-            nmeaMessage = messageEntry.msg.nmea
-            nmeaLength = int(len(nmeaMessage.bit_array)) - int(nmeaMessage.fill_bits)
+            nmeaSentence = messageEntry.nmea
+            nmeaLength = len(nmeaSentence.bit_array) - nmeaSentence.fill_bits
 
             # Get the device MMSI from the message content
-            mmsi = messageEntry.msg.content['mmsi']
+            mmsi = messageEntry.msg.mmsi
 
             # Only check for signature messages that come from the same mmsi
             # if mmsi != message['mmsi']:
@@ -230,9 +241,9 @@ class SerialThread (threading.Thread):
             
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signature/mmsi/verify/{mmsi}'
-            content = base64.b64encode(nmeaMessage.bit_array[:nmeaLength].tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
+            content = base64.b64encode(nmeaSentence.bit_array.tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
             # For AIS-RX Pro
-            signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:512])).decode('ascii')
+            signature = base64.b64encode(message.data).decode('ascii')
             # For VDES-1000
             #signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:508] + message["data"][510:514])).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
@@ -246,8 +257,7 @@ class SerialThread (threading.Thread):
 
                     #Forward the message is a forwarding port is found
                     if self.fwd_host and self.fwd_port:
-                        self.fwd_socket.sendto(bytes(messageEntry.data + '\r\n', "utf-8"), (self.fwd_host, self.fwd_port))
-
+                        self.fwd_socket.sendto(nmeaSentence.raw, (self.fwd_host, self.fwd_port))
                     break
             except Exception as error:
                 pass # Nothing to do, verification just failed
@@ -277,9 +287,6 @@ class SerialThread (threading.Thread):
 
         # And return the vau
         return int(txTimestamp.timestamp())
-    
-    def bitstring_to_bytes(self, s: str):
-        return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
 
     def print_ais_field(self, message: dict, field: str, line: int):
         value = str(message[field] if field in message else ' ')
@@ -360,7 +367,7 @@ def main(screen):
     (options, args) = parser.parse_args()
 
     # Open the serial port
-    serial_port = serial.Serial(options.port, options.baud, timeout=None, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, rtscts=1)
+    #serial_port = serial.Serial(options.port, options.baud, timeout=None, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, rtscts=1)
 
     # And start the serial thread
     s_thread = SerialThread('Serial Port Thread', serial_port, screen, options.vhost, options.fwdhost, options.fwdport)

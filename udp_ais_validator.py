@@ -176,16 +176,14 @@ class UDPThread (threading.Thread):
         if data.startswith('!AIVDM'):
             self.updateAISMessageCounter()
             try:
-                
                 # Initialise with an empty message object
                 message = None
 
                 # Parse the received sentence
                 sentence = AISSentence(data.encode('utf-8'))
                 
-                # For valid AIS NMEA sentences 
+                # For valid NMEA sentences 
                 if sentence:
-                    
                     # Decode the message according to whether it has fragments or not
                     fragmentCount = sentence.frag_cnt
                     if fragmentCount > 1:
