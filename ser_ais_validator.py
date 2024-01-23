@@ -211,10 +211,10 @@ class SerialThread (threading.Thread):
                     if isinstance(message, MessageType21): #and message['type'] not in [6, 8]:
                         # If successful and this is not a data message, add the message
                         # into a map, we might need to validate it
-                        self.msgDict[self.counter] = MsgEntry(message, sentence, self.timestampCalculation(message.content))
+                        self.msgDict[self.counter] = MsgEntry(message, sentence, self.timestampCalculation(message.asdict()))
                         # Now print the message fields in the dashboard
                         for field in self.ais_fields:
-                            self.print_ais_field(message.content, field, self.counter%(self.max_lines-1))
+                            self.print_ais_field(message.asdict(), field, self.counter%(self.max_lines-1))
                         # And increase the line counter
                         self.counter += 1
 
@@ -367,7 +367,7 @@ def main(screen):
     (options, args) = parser.parse_args()
 
     # Open the serial port
-    #serial_port = serial.Serial(options.port, options.baud, timeout=None, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, rtscts=1)
+    serial_port = serial.Serial(options.port, options.baud, timeout=None, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, rtscts=1)
 
     # And start the serial thread
     s_thread = SerialThread('Serial Port Thread', serial_port, screen, options.vhost, options.fwdhost, options.fwdport)
