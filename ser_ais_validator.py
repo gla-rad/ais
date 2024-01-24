@@ -29,11 +29,10 @@ import curses
 import re
 import socket
 import serial
-import hashlib
 import requests
 import base64
 
-from bitstring import BitStream
+#from bitstring import BitStream
 from datetime import datetime, timezone
 
 # Terminal Dashboard Library

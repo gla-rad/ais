@@ -26,7 +26,6 @@ import curses
 import re
 import socket
 import time
-import hashlib
 import requests
 import base64
 
