@@ -21,6 +21,7 @@
 # $ sudo ./udp_ais_validator --port=60041 --vhost=localhost:8764
 
 import threading
+import queue
 import time
 import curses
 import re
@@ -101,6 +102,7 @@ class GUIThread (threading.Thread):
         self.vhost = vhost
         self.aisMsgCounter = 0
         self.vdeMsgCounter = 0
+        self.queue = queue.Queue()
 
         # Initialise a forwarding operation if requested
         self.fwd_host = fwdhost
@@ -142,9 +144,15 @@ class GUIThread (threading.Thread):
         monitorign threads is received.
         """
         while not self.die:
-            time.sleep(1)
+            self.handle_data(self.queue.get())
 
         self.ais_window.addstr(self.max_lines-1, 0, "Exiting... Please Wait...")
+
+    def add_data(self, data):
+        """
+        Adds additional data in the array of incoming data to be processed.
+        """
+        self.queue.put(data)
 
     def handle_data(self, data):
         """
@@ -362,6 +370,7 @@ class GUIThread (threading.Thread):
             and join with the main process.
         """
         self.die = True
+        self.queue.task_done()
         super().join()
 
 class UDPThread (threading.Thread):
@@ -401,9 +410,7 @@ class UDPThread (threading.Thread):
                     reading = reading[reading.rindex('!'):]
                     reading = re.sub('\r\n', '', reading)
                     if reading.startswith('!AIVDM') or reading.startswith('!VEEDM'):
-                        self.lock.acquire()
                         self.guiThread.handle_data(reading)
-                        self.lock.release()
                 except ValueError as error:
                     pass
     
