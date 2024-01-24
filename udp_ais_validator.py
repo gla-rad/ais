@@ -20,6 +20,7 @@
 # Usage Examples:
 # $ sudo ./udp_ais_validator --port=60041 --vhost=localhost:8764
 
+from time import sleep
 import threading
 import queue
 import time
@@ -144,7 +145,8 @@ class GUIThread (threading.Thread):
         monitorign threads is received.
         """
         while not self.die:
-            self.handle_data(self.queue.get())
+            data = self.queue.get()
+            self.handle_data(data)
 
         self.ais_window.addstr(self.max_lines-1, 0, "Exiting... Please Wait...")
 
@@ -409,8 +411,11 @@ class UDPThread (threading.Thread):
                     reading = data.decode('ascii')
                     reading = reading[reading.rindex('!'):]
                     reading = re.sub('\r\n', '', reading)
-                    if reading.startswith('!AIVDM') or reading.startswith('!VEEDM'):
-                        self.guiThread.handle_data(reading)
+                    if reading.startswith('!AIVDM'):
+                        self.guiThread.add_data(reading)
+                    if reading.startswith('!VEEDM'):
+                        sleep(5)
+                        self.guiThread.add_data(reading)
                 except ValueError as error:
                     pass
     
