@@ -99,6 +99,7 @@ class GUIThread (threading.Thread):
         self.fragDict = dict()
         self.vhost = vhost
         self.aisMsgCounter = 0
+        self.vdeMsgCounter = 0
 
         # Initialise a forwarding operation if requested
         self.fwd_host = fwdhost
@@ -122,7 +123,7 @@ class GUIThread (threading.Thread):
         self.header_window.addstr(2, 0, '#' + "UDP AIS MESSAGE VALIDATOR".center(self.max_columns - 2) + '#')
         self.header_window.addstr(3, 0, '#' + f"Currently monitoring UDP ports {self.ports}".center(self.max_columns - 2) + '#')
         self.header_window.addstr(4, 0, self.max_columns*'#')
-        self.header_window.addstr(5, 0, ' Incoming AIS Messages: 00')
+        self.header_window.addstr(5, 0, '| Incoming AIS Messages: 00 / Incoming VDE Messages: 00                                                                          |')
         self.header_window.addstr(6, 0, '|--------------------------------------------------------------------------------------------------------------------------------|')
         self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |       Name       |          Aid Type          | Latitude | Longitude |  Timestamp  | Verified |')
         self.header_window.addstr(8, 0, '|--------------------------------------------------------------------------------------------------------------------------------|')
@@ -153,6 +154,7 @@ class GUIThread (threading.Thread):
         if self.counter >= self.max_lines:
             self.counter = 0
             self.aisMsgCounter = 0
+            self.vdeMsgCounter = 0
             self.msgDict.clear()
             self.ais_window.clear()
             self.info_window.clear()
@@ -217,13 +219,10 @@ class GUIThread (threading.Thread):
                 self.showError(error)
         # For AIVDM messages
         elif data.startswith('!VEEDM'):
+            self.updateVDEMessageCounter()
             try:
-                 # Initialise with an empty message object
-                message = None
-
                 # Try to pick up message sequences but checking the fragment count
                 nmea = NMEASentence(data.encode('utf-8'))
-                #msgParts = data.split(',')
                 
                 # For valid VEEDM sentences that consist of 6 parts
                 if nmea:
@@ -298,25 +297,6 @@ class GUIThread (threading.Thread):
 
         # And return the value
         return int(txTimestamp.timestamp())
-    
-    def bitstring_to_bytes(self, s: str):
-        return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
-    
-    def decode_ascii6(self, data: str):
-        """
-        Decode AIS_ASCII_6 encoded data and convert it into binary.
-        :param data: ASI_ASCII_6 encoded data
-        :return: a binary string of 0's and 1's, e.g. 011100 011111 100001
-        """
-        binary_string = ''
-
-        for c in data:
-            c = ord(c) - 48
-            if c > 40:
-                c -= 8
-            binary_string += f'{c:06b}'
-
-        return binary_string
 
     def print_ais_field(self, message: dict, field: str, line: int):
         value = str(message[field] if field in message else ' ')
@@ -355,7 +335,12 @@ class GUIThread (threading.Thread):
 
     def updateAISMessageCounter(self):
         self.aisMsgCounter = self.aisMsgCounter + 1
-        self.header_window.addstr(5, 24, "{0:0=2d}".format(self.aisMsgCounter))
+        self.header_window.addstr(5, 25, "{0:0=2d}".format(self.aisMsgCounter))
+        self.header_window.refresh()
+
+    def updateVDEMessageCounter(self):
+        self.vdeMsgCounter = self.vdeMsgCounter + 1
+        self.header_window.addstr(5, 52, "{0:0=2d}".format(self.vdeMsgCounter))
         self.header_window.refresh()
         
     def showInfo(self, infoMsg):
