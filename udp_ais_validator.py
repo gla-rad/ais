@@ -36,8 +36,9 @@ from curses import wrapper
 
 # Python AIS Library Import
 from pyais import decode
-from pyais.messages import AISSentence, MessageType21
+from pyais.messages import NMEASentence, AISSentence, MessageType21
 from pyais.messages import ANY_MESSAGE as AISMessage
+from pyais.util import decode_into_bit_array
 
 class MsgEntry:
     """
@@ -55,8 +56,8 @@ class MsgEntry:
 
 class FragmentEntry:
     """
-        A structure to contain the various AIS message fragements received 
-        while their are being reconstructed.
+    A structure to contain the various AIS message fragements received 
+    while their are being reconstructed.
     """
     msgId: int
     fragmentIndex: int
@@ -67,11 +68,11 @@ class FragmentEntry:
         self.fragmentId = index
         self.nmea = nmea
 
-class UDPThread (threading.Thread):
+class GUIThread (threading.Thread):
     """
-        The definition of the udp thread that read the data from the 
-        specified socket port. Then it filters out only the AIVDM sentences
-        and places them to the loaded messages list.
+    The definition of the GUI thread that create an output window using the
+    curses library and populates it with the incoming data provided by the
+    UDP monitoring threads.
     """
     ais_fields = [
         'msg_type',
@@ -85,14 +86,13 @@ class UDPThread (threading.Thread):
         'valid'
     ]
 
-    def __init__(self, name: str, rcv_socket: socket, screen, vhost: str, fwdhost: str, fwdport: str):
+    def __init__(self, name: str, screen, ports: str, vhost: str, fwdhost: str, fwdport: str):
         """
-            The UDP Thread Constructor.
+        The GUI Thread Constructor.
         """
         threading.Thread.__init__(self)
         self.name = name
-        self.rcv_socket = rcv_socket
-        self.buffer_size = 2048
+        self.ports = ports
         self.die = False
         self.screen = screen
         self.msgDict = dict()
@@ -120,9 +120,9 @@ class UDPThread (threading.Thread):
         self.header_window.addstr(0, 0, self.max_columns*'#')
         self.header_window.addstr(1, 0, '#' + '© GLA Research & Development Directorate'.center(self.max_columns - 2) + '#')
         self.header_window.addstr(2, 0, '#' + "UDP AIS MESSAGE VALIDATOR".center(self.max_columns - 2) + '#')
-        self.header_window.addstr(3, 0, '#' + f"Currently monitoring UDP port {self.rcv_socket.getsockname()[1]}".center(self.max_columns - 2) + '#')
+        self.header_window.addstr(3, 0, '#' + f"Currently monitoring UDP ports {self.ports}".center(self.max_columns - 2) + '#')
         self.header_window.addstr(4, 0, self.max_columns*'#')
-        self.header_window.addstr(5, 0, ' Incoming AIS Messages: 0')
+        self.header_window.addstr(5, 0, ' Incoming AIS Messages: 00')
         self.header_window.addstr(6, 0, '|--------------------------------------------------------------------------------------------------------------------------------|')
         self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |       Name       |          Aid Type          | Latitude | Longitude |  Timestamp  | Verified |')
         self.header_window.addstr(8, 0, '|--------------------------------------------------------------------------------------------------------------------------------|')
@@ -136,32 +136,18 @@ class UDPThread (threading.Thread):
 
     def run (self):
         """
-            The main operation of the UDP Thread, where the input from the
-            UDP socket is received.
+        The main operation of the GUI Thread, where the input from the UDP
+        monitorign threads is received.
         """
         while not self.die:
-            try:
-                data, address = self.rcv_socket.recvfrom(self.buffer_size)
-            except socket.error as error:
-                if isinstance(error, socket.timeout):
-                    pass
-                else:
-                    self.showError(error)
-            else:
-                try:
-                    reading = data.decode('ascii')
-                    reading = reading[reading.rindex('!AIVDM'):]
-                    reading = re.sub('\r\n', '', reading)
-                    self.handle_data(reading)
-                except ValueError as error:
-                    pass    
+            time.sleep(1)
 
         self.ais_window.addstr(self.max_lines-1, 0, "Exiting... Please Wait...")
 
     def handle_data(self, data):
         """
-            The UDP port data input handling function. Only AIVDM sentences 
-            are allows and for the time being this just prints out the data.
+        The GUI incoming data handling function. Only AIVDM and VEEDM sentences 
+        are allows and for the time being this just prints out the data.
         """
         # Reset the line counter
         if self.counter >= self.max_lines:
@@ -207,7 +193,7 @@ class UDPThread (threading.Thread):
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
                             if message and message.data and len(message.data)*8 in [512, 514]:
-                                self.handle_authorization_message(message)
+                                self.handle_authentication_message(message.data)
 
                             # And delete the fragment entry
                             del self.fragDict[sequenceId]
@@ -229,11 +215,32 @@ class UDPThread (threading.Thread):
             except Exception as error:
                 self.showInfo(str(data))
                 self.showError(error)
+        # For AIVDM messages
+        elif data.startswith('!VEEDM'):
+            try:
+                 # Initialise with an empty message object
+                message = None
+
+                # Try to pick up message sequences but checking the fragment count
+                nmea = NMEASentence(data.encode('utf-8'))
+                #msgParts = data.split(',')
+                
+                # For valid VEEDM sentences that consist of 6 parts
+                if nmea:
+                    # Decode the payload 
+                    decodedPayload = decode_into_bit_array(nmea.data_fields[-1], nmea.fill_bits).tobytes()
+
+                    # And process always as an authorization message
+                    self.handle_authentication_message(decodedPayload)
+
+            except Exception as error:
+                self.showInfo(str(data))
+                self.showError(error)
 
         # And update the window
         self.ais_window.refresh()
         
-    def handle_authorization_message(self, message: AISMessage):  
+    def handle_authentication_message(self, authentication: bytes):  
         # Look for a message that matches the signature
         for index in range(len(self.msgDict)-1, -1, -1):
             messageEntry = self.msgDict[index]
@@ -249,7 +256,7 @@ class UDPThread (threading.Thread):
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signature/mmsi/verify/{mmsi}'
             content = base64.b64encode(nmeaSentence.bit_array.tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
-            signature = base64.b64encode(message.data).decode('ascii')
+            signature = base64.b64encode(authentication).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
             headers = {'content-type': 'application/json'}
 
@@ -294,6 +301,22 @@ class UDPThread (threading.Thread):
     
     def bitstring_to_bytes(self, s: str):
         return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
+    
+    def decode_ascii6(self, data: str):
+        """
+        Decode AIS_ASCII_6 encoded data and convert it into binary.
+        :param data: ASI_ASCII_6 encoded data
+        :return: a binary string of 0's and 1's, e.g. 011100 011111 100001
+        """
+        binary_string = ''
+
+        for c in data:
+            c = ord(c) - 48
+            if c > 40:
+                c -= 8
+            binary_string += f'{c:06b}'
+
+        return binary_string
 
     def print_ais_field(self, message: dict, field: str, line: int):
         value = str(message[field] if field in message else ' ')
@@ -332,7 +355,7 @@ class UDPThread (threading.Thread):
 
     def updateAISMessageCounter(self):
         self.aisMsgCounter = self.aisMsgCounter + 1
-        self.header_window.addstr(5, 24, f'{self.aisMsgCounter}')
+        self.header_window.addstr(5, 24, "{0:0=2d}".format(self.aisMsgCounter))
         self.header_window.refresh()
         
     def showInfo(self, infoMsg):
@@ -355,6 +378,55 @@ class UDPThread (threading.Thread):
         self.die = True
         super().join()
 
+class UDPThread (threading.Thread):
+    """
+    The definition of UDP udp thread that read the data from the specified UDP
+    socket port. Then it filters out only the AIVDM and VEEDM sentences and
+    places them to the loaded messages list.
+    """
+    def __init__(self, name: str, rcv_socket: socket, guiThread: GUIThread):
+        """
+            The GUI Thread Constructor.
+        """
+        threading.Thread.__init__(self)
+        self.name = name
+        self.rcv_socket = rcv_socket
+        self.buffer_size = 2048
+        self.guiThread = guiThread
+        self.die = False
+    
+    def run (self):
+        """
+            The main operation of the UDP Thread, where the input from the
+            UDP socket is received.
+        """
+        while not self.die:
+            try:
+                data, address = self.rcv_socket.recvfrom(self.buffer_size)
+            except socket.error as error:
+                if isinstance(error, socket.timeout):
+                    pass
+                else:
+                    self.showError(error)
+            else:
+                try:
+                    reading = data.decode('ascii')
+                    reading = reading[reading.rindex('!'):]
+                    reading = re.sub('\r\n', '', reading)
+                    if reading.startswith('!AIVDM') or reading.startswith('!VEEDM'):
+                        self.guiThread.handle_data(reading)
+                except ValueError as error:
+                    pass
+    
+    def join(self):
+        """
+            This function can be called when the thread is supposed to finish
+            and join with the main process.
+        """
+        self.die = True
+        self.rcv_socket.close()
+        super().join()
+                
 def main(screen):
     """
         The main function of the script where the input arguments are parsed and
@@ -362,9 +434,9 @@ def main(screen):
     """
     from optparse import OptionParser
 
-    desc="""Use this tool to validate the AIVDM sentences received through a UDP port."""
+    desc="""Use this tool to validate the AIVDM/VEEDM sentences received through a UDP port."""
     parser = OptionParser(description=desc)
-    parser.add_option("--port", help="The UDP port to read the data from", default="60041")
+    parser.add_option("--ports", help="The UDP ports to read the data from", default="60040,60041")
     parser.add_option("--vhost", help="The verification server hostname", default="localhost:8764")
     parser.add_option("--fwdhost", help="The host to forward verified messages", default="127.0.0.1")
     parser.add_option("--fwdport", help="The post to forward verified messages", default=None)
@@ -372,20 +444,34 @@ def main(screen):
     # Parse the options
     (options, args) = parser.parse_args()
 
-    # Open the UDP port
-    udp_recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udp_recv_sock.settimeout(1)
-    udp_recv_sock.bind(("", int(options.port)))
-    
-    # And start the serial thread
-    s_thread = UDPThread('UDP Port Thread', udp_recv_sock, screen, options.vhost, options.fwdhost, options.fwdport)
-    s_thread.start()
+    # Get all the provided UDP socket port numbers
+    ports = options.ports
+
+    # And the GUI thread
+    gui_thread = GUIThread('GUI Thread', screen, options.ports, options.vhost, options.fwdhost, options.fwdport)
+    gui_thread.start()
+
+    # And start monitoring each UDP socket individually
+    udp_recv_sockets = []
+    udp_threads = []
+    for port in ports.split(','):
+        # Open the UDP port
+        udp_recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udp_recv_socket.settimeout(1)
+        udp_recv_socket.bind(("", int(port)))
+        udp_recv_sockets.append(udp_recv_socket)
+
+        # Start the UDP monitoring thread
+        udp_thread = UDPThread('UDP Port Monitoring Thread', udp_recv_socket, gui_thread)
+        udp_thread.start()
+        udp_threads.append(udp_thread)
+        
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        s_thread.join()
-        udp_recv_sock.close()
+        gui_thread.join()
+        for udp_thread in udp_threads: udp_thread.join() 
 
 if __name__ == '__main__':
     wrapper(main)

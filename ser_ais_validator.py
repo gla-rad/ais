@@ -125,7 +125,7 @@ class SerialThread (threading.Thread):
         self.header_window.addstr(2, 0, '#' + "SERIAL AIS MESSAGE VALIDATOR".center(self.max_columns - 2) + '#')
         self.header_window.addstr(3, 0, '#' + f"Currently monitoring serial port {self.ser.port}".center(self.max_columns - 2) + '#')
         self.header_window.addstr(4, 0, self.max_columns*'#')
-        self.header_window.addstr(5, 0, ' Incoming AIS Messages: 0')
+        self.header_window.addstr(5, 0, ' Incoming AIS Messages: 00')
         self.header_window.addstr(6, 0, '|--------------------------------------------------------------------------------------------------------------------------------|')
         self.header_window.addstr(7, 0, '| Type | Source MMSI | Dest MMSI |       Name       |          Aid Type          | Latitude | Longitude |  Timestamp  | Verified |')
         self.header_window.addstr(8, 0, '|--------------------------------------------------------------------------------------------------------------------------------|')
@@ -199,7 +199,7 @@ class SerialThread (threading.Thread):
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
                             if message and message.data and len(message.data)*8 in [512, 514]:
-                                self.handle_authorization_message(message)
+                                self.handle_authentication_message(message.data)
 
                             # And delete the fragment entry
                             del self.fragDict[sequenceId]
@@ -225,7 +225,7 @@ class SerialThread (threading.Thread):
         # And update the window
         self.ais_window.refresh()
         
-    def handle_authorization_message(self, message: AISMessage):  
+    def handle_authentication_message(self, authentication: bytes):  
         # Look for a message that matches the signature
         for index in range(len(self.msgDict)-1, -1, -1):
             messageEntry = self.msgDict[index]
@@ -243,7 +243,7 @@ class SerialThread (threading.Thread):
             url = f'http://{self.vhost}/api/signature/mmsi/verify/{mmsi}'
             content = base64.b64encode(nmeaSentence.bit_array.tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
             # For AIS-RX Pro
-            signature = base64.b64encode(message.data).decode('ascii')
+            signature = base64.b64encode(authentication).decode('ascii')
             # For VDES-1000 - we need to fix the offset data position
             #binary = BitStream(message.data)
             #binaryString = binary.bin
@@ -328,7 +328,7 @@ class SerialThread (threading.Thread):
 
     def updateAISMessageCounter(self):
         self.aisMsgCounter = self.aisMsgCounter + 1
-        self.header_window.addstr(5, 24, f'{self.aisMsgCounter}')
+        self.header_window.addstr(5, 24, "{0:0=2d}".format(self.aisMsgCounter))
         self.header_window.refresh()
 
     def showInfo(self, infoMsg):
