@@ -54,7 +54,7 @@ class MsgEntry:
 
     def __init__(self, msg: AISMessage, nmea: AISSentence, time: float):
         self.msg = msg
-        self.data = nmea
+        self.nmea = nmea
         self.time = time
 
 class FragmentEntry:
@@ -178,16 +178,16 @@ class SerialThread (threading.Thread):
                     # Decode the message according to whether it has fragments or not
                     fragmentCount = sentence.frag_cnt
                     if fragmentCount > 1:
-                        sequenceId = sentence.frag_num
+                        fragmentId = sentence.frag_num
                         sequenceId = sentence.seq_id
 
                         # Initialise the entry if it does not exist
-                        if sequenceId == 1:
+                        if fragmentId == 1:
                             self.fragDict[sequenceId] = []
 
                         # Append the received message into the array if it seems OK
-                        if len(list(filter(lambda msg: msg.fragmentId == sequenceId, self.fragDict[sequenceId]))) == 0:
-                            self.fragDict[sequenceId].append(FragmentEntry(sequenceId, sequenceId, sentence))
+                        if len(list(filter(lambda msg: msg.fragmentId == fragmentId, self.fragDict[sequenceId]))) == 0:
+                            self.fragDict[sequenceId].append(FragmentEntry(sequenceId, fragmentId, sentence))
 
                         # Note to the user that a sequence was picked up
                         if len(self.fragDict[sequenceId]) == fragmentCount:
@@ -292,7 +292,7 @@ class SerialThread (threading.Thread):
         value = str(message[field] if field in message else ' ')
         start = 0
         length = 0
-        if(field == 'type'):
+        if(field == 'msg_type'):
             start = 0
             length = 4
         elif(field == 'mmsi'):
