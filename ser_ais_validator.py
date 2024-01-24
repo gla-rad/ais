@@ -33,6 +33,7 @@ import hashlib
 import requests
 import base64
 
+from bitstring import BitStream
 from datetime import datetime, timezone
 
 # Terminal Dashboard Library
@@ -244,8 +245,11 @@ class SerialThread (threading.Thread):
             content = base64.b64encode(nmeaSentence.bit_array.tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
             # For AIS-RX Pro
             signature = base64.b64encode(message.data).decode('ascii')
-            # For VDES-1000
-            #signature = base64.b64encode(self.bitstring_to_bytes(message["data"][0:508] + message["data"][510:514])).decode('ascii')
+            # For VDES-1000 - we need to fix the offset data position
+            #binary = BitStream(message.data)
+            #binaryString = binary.bin
+            #fixedbinaryString = binaryString[0:508] + binaryString[510:514]
+            #signature = base64.b64encode(BitStream(bin=fixedbinaryString).tobytes()).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
             headers = {'content-type': 'application/json'}
 
