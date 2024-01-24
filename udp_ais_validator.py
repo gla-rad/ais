@@ -86,12 +86,13 @@ class GUIThread (threading.Thread):
         'valid'
     ]
 
-    def __init__(self, name: str, screen, ports: str, vhost: str, fwdhost: str, fwdport: str):
+    def __init__(self, name: str, lock: threading.Lock, screen, ports: str, vhost: str, fwdhost: str, fwdport: str):
         """
         The GUI Thread Constructor.
         """
         threading.Thread.__init__(self)
         self.name = name
+        self.lock = lock
         self.ports = ports
         self.die = False
         self.screen = screen
@@ -340,7 +341,7 @@ class GUIThread (threading.Thread):
 
     def updateVDEMessageCounter(self):
         self.vdeMsgCounter = self.vdeMsgCounter + 1
-        self.header_window.addstr(5, 52, "{0:0=2d}".format(self.vdeMsgCounter))
+        self.header_window.addstr(5, 53, "{0:0=2d}".format(self.vdeMsgCounter))
         self.header_window.refresh()
         
     def showInfo(self, infoMsg):
@@ -369,12 +370,13 @@ class UDPThread (threading.Thread):
     socket port. Then it filters out only the AIVDM and VEEDM sentences and
     places them to the loaded messages list.
     """
-    def __init__(self, name: str, rcv_socket: socket, guiThread: GUIThread):
+    def __init__(self, name: str, lock: threading.Lock, rcv_socket: socket, guiThread: GUIThread):
         """
             The GUI Thread Constructor.
         """
         threading.Thread.__init__(self)
         self.name = name
+        self.lock = lock
         self.rcv_socket = rcv_socket
         self.buffer_size = 2048
         self.guiThread = guiThread
@@ -399,7 +401,9 @@ class UDPThread (threading.Thread):
                     reading = reading[reading.rindex('!'):]
                     reading = re.sub('\r\n', '', reading)
                     if reading.startswith('!AIVDM') or reading.startswith('!VEEDM'):
+                        self.lock.acquire()
                         self.guiThread.handle_data(reading)
+                        self.lock.release()
                 except ValueError as error:
                     pass
     
@@ -432,8 +436,11 @@ def main(screen):
     # Get all the provided UDP socket port numbers
     ports = options.ports
 
+    # Creating lock for threads
+    lock = threading.Lock()
+
     # And the GUI thread
-    gui_thread = GUIThread('GUI Thread', screen, options.ports, options.vhost, options.fwdhost, options.fwdport)
+    gui_thread = GUIThread('GUI Thread', lock, screen, options.ports, options.vhost, options.fwdhost, options.fwdport)
     gui_thread.start()
 
     # And start monitoring each UDP socket individually
@@ -447,7 +454,7 @@ def main(screen):
         udp_recv_sockets.append(udp_recv_socket)
 
         # Start the UDP monitoring thread
-        udp_thread = UDPThread('UDP Port Monitoring Thread', udp_recv_socket, gui_thread)
+        udp_thread = UDPThread('UDP Port Monitoring Thread', lock, udp_recv_socket, gui_thread)
         udp_thread.start()
         udp_threads.append(udp_thread)
         
