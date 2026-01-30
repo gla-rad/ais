@@ -27,6 +27,7 @@ import time
 import curses
 import re
 import socket
+import struct
 import time
 import requests
 import base64
@@ -38,7 +39,7 @@ from curses import wrapper
 
 # Python AIS Library Import
 from pyais import decode
-from pyais.messages import NMEASentence, AISSentence, MessageType21
+from pyais.messages import NMEASentence, AISSentence, MessageType6, MessageType8, MessageType21
 from pyais.messages import ANY_MESSAGE as AISMessage
 from pyais.util import decode_into_bit_array
 
@@ -104,6 +105,7 @@ class GUIThread (threading.Thread):
         self.aisMsgCounter = 0
         self.vdeMsgCounter = 0
         self.queue = queue.Queue()
+        self.lock = threading.Lock()
 
         # Initialise a forwarding operation if requested
         self.fwd_host = fwdhost
@@ -146,8 +148,10 @@ class GUIThread (threading.Thread):
         """
         while not self.die:
             data = self.queue.get()
+            self.lock.acquire()
             self.handle_data(data)
-
+            self.lock.release()
+        
         self.ais_window.addstr(self.max_lines-1, 0, "Exiting... Please Wait...")
 
     def add_data(self, data):
@@ -205,7 +209,7 @@ class GUIThread (threading.Thread):
                             ).decode()
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
-                            if message and message.data and len(message.data)*8 in [512, 514]:
+                            if message and (isinstance(message, MessageType6) or isinstance(message, MessageType8)) and len(message.data)*8 in [512, 514]:
                                 self.handle_authentication_message(message.data)
 
                             # And delete the fragment entry
@@ -462,7 +466,18 @@ def main(screen):
         # Open the UDP port
         udp_recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp_recv_socket.settimeout(1)
-        udp_recv_socket.bind(("", int(port)))
+        udp_recv_socket.bind(("239.192.0.2", int(port)))
+        
+        # Join the multicast group - tell the operating system to add the socket
+        # to the multicast group on all interfaces
+        group = socket.inet_aton("239.192.0.2")
+        mreq = struct.pack("4sL", group, socket.INADDR_ANY)
+        udp_recv_socket.setsockopt(
+            socket.IPPROTO_IP,
+            socket.IP_ADD_MEMBERSHIP,
+            mreq)
+        
+        # Append the UDP socket
         udp_recv_sockets.append(udp_recv_socket)
 
         # Start the UDP monitoring thread
