@@ -259,6 +259,28 @@ class GUIThread (threading.Thread):
         self.ais_window.refresh()
         
     def handle_authentication_message(self, authentication: bytes):  
+        ##########################################################
+        #     Decode the IALA G1192 Authentication Message       #
+        ##########################################################
+        # According to the latest IALA G1192 Guideline, this should 
+        # include the following fields:
+        #
+        # VPFI - 16bits: 
+        # Message ID - 6 bits
+        # Authentication Scheme ID - 8 bits
+        # AIS Message ID - 6 bits
+        # MMSI - 30 bits
+        # Channel ID - 2 bits
+        # Slot Number - 12 bits
+        # Timestamp - 32 bits
+        # Signature - 512 bits
+        #
+        # Overall the is a this is a total bitcount of 624 bits.
+        # You can find more information on the struct usage here:
+        # https://docs.python.org/3/library/struct.html
+        #
+        authMessage = struct.unpack('', authentication)
+
         # Look for a message that matches the signature
         for index in range(len(self.msgDict)-1, -1, -1):
             messageEntry = self.msgDict[index]
