@@ -151,6 +151,7 @@ class GUIThread (threading.Thread):
             self.lock.acquire()
             self.handle_data(data)
             self.lock.release()
+            self.queue.task_done()
         
         self.ais_window.addstr(self.max_lines-1, 0, "Exiting... Please Wait...")
 
@@ -162,7 +163,7 @@ class GUIThread (threading.Thread):
 
     def handle_data(self, data):
         """
-        The GUI incoming data handling function. Only AIVDM and VEEDM sentences 
+        The GUI incoming data handling function. Only AIVDM and VETDB sentences 
         are allows and for the time being this just prints out the data.
         """
         # Reset the line counter
@@ -174,8 +175,11 @@ class GUIThread (threading.Thread):
             self.ais_window.clear()
             self.info_window.clear()
 
+        # Don't process empty messages
+        if not data or len(data) == 0:
+            pass
         # For AIVDM messages
-        if data.startswith('!AIVDM'):
+        elif data.startswith('!AIVDM'):
             self.updateAISMessageCounter()
             try:
                 # Initialise with an empty message object
@@ -233,13 +237,13 @@ class GUIThread (threading.Thread):
                 self.showInfo(str(data))
                 self.showError(error)
         # For AIVDM messages
-        elif data.startswith('!VEEDM'):
+        elif data.startswith('!VETDB'):
             self.updateVDEMessageCounter()
             try:
                 # Try to pick up message sequences but checking the fragment count
                 nmea = NMEASentence(data.encode('utf-8'))
                 
-                # For valid VEEDM sentences that consist of 6 parts
+                # For valid VETDB sentences that consist of 6 parts
                 if nmea:
                     # Decode the payload 
                     decodedPayload = decode_into_bit_array(nmea.data_fields[-1], nmea.fill_bits).tobytes()
@@ -375,14 +379,18 @@ class GUIThread (threading.Thread):
             This function can be called when the thread is supposed to finish
             and join with the main process.
         """
+        # Tell itself it need so stop
         self.die = True
-        self.queue.task_done()
+        # Kill the queue
+        self.queue.put(None)
+        self.queue.join()
+        # And join the parent thread
         super().join()
 
 class UDPThread (threading.Thread):
     """
     The definition of UDP udp thread that read the data from the specified UDP
-    socket port. Then it filters out only the AIVDM and VEEDM sentences and
+    socket port. Then it filters out only the AIVDM and VETDB sentences and
     places them to the loaded messages list.
     """
     def __init__(self, name: str, lock: threading.Lock, rcv_socket: socket, guiThread: GUIThread):
@@ -403,21 +411,19 @@ class UDPThread (threading.Thread):
             UDP socket is received.
         """
         while not self.die:
+            data, address = None, None
             try:
                 data, address = self.rcv_socket.recvfrom(self.buffer_size)
             except socket.error as error:
-                if isinstance(error, socket.timeout):
-                    pass
-                else:
-                    self.showError(error)
-            else:
+                pass
+            if data and address:
                 try:
                     reading = data.decode('ascii')
                     reading = reading[reading.rindex('!'):]
                     reading = re.sub('\r\n', '', reading)
                     if reading.startswith('!AIVDM'):
                         self.guiThread.add_data(reading)
-                    if reading.startswith('!VEEDM'):
+                    if reading.startswith('!VETDB'):
                         sleep(5)
                         self.guiThread.add_data(reading)
                 except ValueError as error:
@@ -428,8 +434,11 @@ class UDPThread (threading.Thread):
             This function can be called when the thread is supposed to finish
             and join with the main process.
         """
+        # Tell itself if needs to stop
         self.die = True
+        # Close the socket
         self.rcv_socket.close()
+        # And join the parent thread
         super().join()
                 
 def main(screen):
@@ -439,7 +448,7 @@ def main(screen):
     """
     from optparse import OptionParser
 
-    desc="""Use this tool to validate the AIVDM/VEEDM sentences received through a UDP port."""
+    desc="""Use this tool to validate the AIVDM/VETDB sentences received through a UDP port."""
     parser = OptionParser(description=desc)
     parser.add_option("--ports", help="The UDP ports to read the data from", default="60040,60041")
     parser.add_option("--vhost", help="The verification server hostname", default="localhost:8764")
@@ -484,7 +493,7 @@ def main(screen):
         udp_thread = UDPThread('UDP Port Monitoring Thread', lock, udp_recv_socket, gui_thread)
         udp_thread.start()
         udp_threads.append(udp_thread)
-        
+
     try:
         while True:
             time.sleep(1)

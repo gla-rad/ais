@@ -9,3 +9,6 @@ top_block.py
 build
 **/build/
 **/gr-aistx-3.8/
+
+# virtualenv
+.venv
