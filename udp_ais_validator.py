@@ -15,7 +15,7 @@
 # limitations under the License.
 # 
 # First install the required packages:
-# $ sudo pip install pyais
+# $ sudo pip install pyais bitstring
 #
 # Usage Examples:
 # $ sudo ./udp_ais_validator --port=60041 --vhost=localhost:8764
@@ -33,6 +33,7 @@ import requests
 import base64
 
 from datetime import datetime, timezone
+from bitstring import BitStream
 
 # Terminal Dashboard Library
 from curses import wrapper
@@ -49,13 +50,15 @@ class MsgEntry:
         data, such as the reception time.
     """
     msg: AISMessage
+    msgNo: int
+    msgChannel: int
     nmea: AISSentence
-    time: float
 
-    def __init__(self, msg: AISMessage, nmea: AISSentence, time: float):
+    def __init__(self, msg: AISMessage, msgNo: int, msgChannel: str, nmea: AISSentence):
         self.msg = msg
+        self.msgNo = msgNo
+        self.msgChannel = 1 if msgChannel == 'B' else 0
         self.nmea = nmea
-        self.time = time
 
 class FragmentEntry:
     """
@@ -226,7 +229,11 @@ class GUIThread (threading.Thread):
                     if isinstance(message, MessageType21): #and message['type'] not in [6, 8]:
                         # If successful and this is not a data message, add the message
                         # into a map, we might need to validate it
-                        self.msgDict[self.counter] = MsgEntry(message, sentence, self.timestampCalculation(message.asdict()))
+                        self.msgDict[self.counter] = MsgEntry(message,
+                                                              message.asdict()['msg_type'],
+                                                              sentence.channel,
+                                                              sentence
+                                                             )
                         # Now print the message fields in the dashboard
                         for field in self.ais_fields:
                             self.print_ais_field(message.asdict(), field, self.counter%(self.max_lines-1))
@@ -258,36 +265,62 @@ class GUIThread (threading.Thread):
         # And update the window
         self.ais_window.refresh()
         
-    def handle_authentication_message(self, authentication: bytes):  
+    def handle_authentication_message(self, auth_msg: bytes):  
         ##########################################################
         #     Decode the IALA G1192 Authentication Message       #
         ##########################################################
         # According to the latest IALA G1192 Guideline, this should 
         # include the following fields:
         #
-        # VPFI - 16bits: 
-        # Message ID - 6 bits
-        # Authentication Scheme ID - 8 bits
-        # AIS Message ID - 6 bits
-        # MMSI - 30 bits
-        # Channel ID - 2 bits
-        # Slot Number - 12 bits
-        # Timestamp - 32 bits
-        # Signature - 512 bits
+        # VPFI - 16bits: Always 7 for authentication messages
+        # Message ID - 6bits: Fixed to 1 for AIS authentication messages
+        # Authentication Scheme ID - 8bits: Always 1 for VDE-TER
+        # AIS Message ID - 6bits: The type of the AIS message, i.e. 21
+        # MMSI - 30bits: The MMSI of the AIS message being signed
+        # Channel ID - 2bits: The transmission channel of the AIS message being signed
+        # Slot Number - 12bits: The slot number - fix to 4095 for now
+        # Timestamp - 32bits: The timestamp of transmission of the AIS message
+        # Signature - 512bits: The AIS message signature
         #
         # Overall the is a this is a total bitcount of 624 bits.
-        # You can find more information on the struct usage here:
-        # https://docs.python.org/3/library/struct.html
         #
-        authMessage = struct.unpack('', authentication)
+        data = BitStream(bytes=auth_msg)
+        vpfi              = data.read('uint:16')
+        message_id        = data.read('uint:6')
+        auth_scheme_id    = data.read('uint:8')
+        ais_message_id    = data.read('uint:6')
+        mmsi              = data.read('uint:30')
+        channel_id        = data.read('uint:2')
+        slot_number       = data.read('uint:12')
+        timestamp         = data.read('uint:32')
+        signature         = data.read('bits:512')
 
+        # Check for the correct VPFI value
+        if vpfi != 7:
+            return
+
+        # Check that the authentication message ID is set to 1
+        if message_id != 1:
+            return
+
+        # Check that this is a VDE-TER AIS authentication message
+        if auth_scheme_id !=1:
+            return
+        
         # Look for a message that matches the signature
         for index in range(len(self.msgDict)-1, -1, -1):
             messageEntry = self.msgDict[index]
+            aisNo = messageEntry.msgNo
+            aisChannel = messageEntry.msgChannel
             nmeaSentence = messageEntry.nmea
 
-            # Get the device MMSI from the message content
-            mmsi = messageEntry.msg.mmsi
+            # Check for a matching AIS message type
+            if ais_message_id != aisNo:
+                continue
+
+            # Check for a matching AIS channel
+            if channel_id != aisChannel:
+                continue
 
             # Only check for signature messages that come from the same mmsi
             # if mmsi != message['mmsi']:
@@ -295,9 +328,21 @@ class GUIThread (threading.Thread):
 
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signature/mmsi/verify/{mmsi}'
-            content = base64.b64encode(nmeaSentence.bit_array.tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
-            signature = base64.b64encode(authentication).decode('ascii')
-            payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
+            content = base64.b64encode(
+                vpfi.to_bytes(8, 'big') +
+                message_id.to_bytes(8, 'big') +
+                auth_scheme_id.to_bytes(8, 'big') +
+                ais_message_id.to_bytes(8, 'big') +
+                mmsi.to_bytes(8, 'big') +
+                channel_id.to_bytes(8, 'big') +
+                slot_number.to_bytes(8, 'big') +
+                timestamp.to_bytes(8, 'big') +
+                nmeaSentence.bit_array.tobytes()
+            ).decode('ascii')
+            contentSign = base64.b64encode(
+                signature.tobytes()
+            ).decode('ascii')
+            payload = f"{{\"content\": \"{content}\", \"signature\": \"{contentSign}\"}}"
             headers = {'content-type': 'application/json'}
 
             # Try to verify
@@ -315,30 +360,7 @@ class GUIThread (threading.Thread):
 
             # Only try once for now - just the last message
             break
-
-    def timestampCalculation(self, message: dict):
-        # Figure out the current time (but no nanos)
-        now = datetime.now(timezone.utc).replace(microsecond=0)
-
-        # If the message doesn't have a second, just return the now time
-        if 'second' not in message:
-            return int(now.timestamp())
-
-        # Replace the seconds with the ones specified in the message to get the TX
-        # Be careful, cause if the second int the message is over 60, then we 
-        # assume it was encoded with 00 second
-        if message['second']< 60:
-            txTimestamp = now.replace(second=message['second'])
-        else:
-            txTimestamp = now.replace(second=0)
-
-        # If the minute is different, then it must be the previous one
-        if txTimestamp > now:
-            txTimestamp.replace(minute=txTimestamp.minute-1)
-
-        # And return the value
-        return int(txTimestamp.timestamp())
-
+    
     def print_ais_field(self, message: dict, field: str, line: int):
         value = str(message[field] if field in message else ' ')
         start = 0
@@ -367,7 +389,6 @@ class GUIThread (threading.Thread):
         elif(field == 'second'):
             start = 104
             length = 11
-            value = str(self.msgDict[line].time)
         else:
             start = 118
             length = 8
