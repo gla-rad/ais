@@ -215,8 +215,8 @@ class GUIThread (threading.Thread):
                                 )
                             ).decode()
 
-                            # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
-                            if message and (isinstance(message, MessageType6) or isinstance(message, MessageType8)) and len(message.data)*8 in [512, 514]:
+                            # According to IALA G1192, signature messages should always be 624 bits long
+                            if message and (isinstance(message, MessageType6) or isinstance(message, MessageType8)) and len(message.data)*8 in [624,512]:
                                 self.handle_authentication_message(message.data)
 
                             # And delete the fragment entry
@@ -293,7 +293,7 @@ class GUIThread (threading.Thread):
         channel_id        = data.read('uint:2')
         slot_number       = data.read('uint:12')
         timestamp         = data.read('uint:32')
-        signature         = data.read('bits:512')
+        signature         = data.read('bits:400')
 
         # Check for the correct VPFI value
         if vpfi != 7:
@@ -493,7 +493,9 @@ def main(screen):
 
     desc="""Use this tool to validate the AIVDM/VETDB sentences received through a UDP port."""
     parser = OptionParser(description=desc)
-    parser.add_option("--ports", help="The UDP ports to read the data from", default="60040,60041")
+    parser.add_option("--multicastip", help="The multicast IP to listen for data from", default="239.192.0.2")
+    parser.add_option("--ports", help="The UDP ports to read the data from", default="6002")
+    parser.add_option("--interface", help="The IP of the interface to listen for data from", default=None)
     parser.add_option("--vhost", help="The verification server hostname", default="localhost:8764")
     parser.add_option("--fwdhost", help="The host to forward verified messages", default="127.0.0.1")
     parser.add_option("--fwdport", help="The post to forward verified messages", default=None)
@@ -518,16 +520,15 @@ def main(screen):
         # Open the UDP port
         udp_recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp_recv_socket.settimeout(1)
-        udp_recv_socket.bind(("239.192.0.2", int(port)))
-        
+        udp_recv_socket.bind((options.multicastip, int(port)))
         # Join the multicast group - tell the operating system to add the socket
         # to the multicast group on all interfaces
-        group = socket.inet_aton("239.192.0.2")
-        mreq = struct.pack("4sL", group, socket.INADDR_ANY)
+        multicast_group = socket.inet_aton(options.multicastip)
+        membership_req = struct.pack("4s4s", multicast_group, socket.inet_aton(options.interface)) if options.interface else struct.pack("4sL", multicast_group, socket.INADDR_ANY)
         udp_recv_socket.setsockopt(
             socket.IPPROTO_IP,
             socket.IP_ADD_MEMBERSHIP,
-            mreq)
+            membership_req)
         
         # Append the UDP socket
         udp_recv_sockets.append(udp_recv_socket)
