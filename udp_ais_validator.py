@@ -215,10 +215,6 @@ class GUIThread (threading.Thread):
                                 )
                             ).decode()
 
-                            # According to IALA G1192, signature messages should always be 624 bits long
-                            if message and (isinstance(message, MessageType6) or isinstance(message, MessageType8)) and len(message.data)*8 in [624,512]:
-                                self.handle_authentication_message(message.data)
-
                             # And delete the fragment entry
                             del self.fragDict[sequenceId]
                     else:
@@ -256,7 +252,7 @@ class GUIThread (threading.Thread):
                     decodedPayload = decode_into_bit_array(nmea.data_fields[-1], nmea.fill_bits).tobytes()
 
                     # And process always as an authorization message
-                    self.handle_authentication_message(decodedPayload)
+                    self.handle_signature_message(decodedPayload)
 
             except Exception as error:
                 self.showInfo(str(data))
@@ -265,9 +261,9 @@ class GUIThread (threading.Thread):
         # And update the window
         self.ais_window.refresh()
         
-    def handle_authentication_message(self, auth_msg: bytes):  
+    def handle_signature_message(self, auth_msg: bytes):  
         ##########################################################
-        #     Decode the IALA G1192 Authentication Message       #
+        #        Decode the IALA G1192 Signature Message         #
         ##########################################################
         # According to the latest IALA G1192 Guideline, this should 
         # include the following fields:
@@ -293,7 +289,7 @@ class GUIThread (threading.Thread):
         channel_id        = data.read('uint:2')
         slot_number       = data.read('uint:12')
         timestamp         = data.read('uint:32')
-        signature         = data.read('bits:400')
+        signature         = data.read('bits:512')
 
         # Check for the correct VPFI value
         if vpfi != 7:
