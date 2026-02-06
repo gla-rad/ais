@@ -322,23 +322,23 @@ class GUIThread (threading.Thread):
             # if mmsi != message['mmsi']:
             #     continue
 
+            # Now the repeat indicator hack
+            # For some reason the repeat indicator changes between the transmission
+            # and the reception and we need to reset to make sure the validation works
+            msg_bs = nmeaSentence.bit_array
+            msg_bs[6] = 0
+            msg_bs[7] = 0
+
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signature/mmsi/verify/{mmsi}'
             content = base64.b64encode(
-                vpfi.to_bytes(8, 'big') +
-                message_id.to_bytes(8, 'big') +
-                auth_scheme_id.to_bytes(8, 'big') +
-                ais_message_id.to_bytes(8, 'big') +
-                mmsi.to_bytes(8, 'big') +
-                channel_id.to_bytes(8, 'big') +
-                slot_number.to_bytes(8, 'big') +
-                timestamp.to_bytes(8, 'big') +
-                nmeaSentence.bit_array.tobytes()
+                BitStream(bytes=auth_msg).read('bits:112').tobytes() +
+                msg_bs.tobytes()
             ).decode('ascii')
             contentSign = base64.b64encode(
                 signature.tobytes()
             ).decode('ascii')
-            payload = f"{{\"content\": \"{content}\", \"signature\": \"{contentSign}\"}}"
+            payload = f"{{\"content\": \"{content}\", \"signature\": \"{contentSign}\", \"algorithm\": \"SHA256withCVC-ECDSA\"}}"
             headers = {'content-type': 'application/json'}
 
             # Try to verify
