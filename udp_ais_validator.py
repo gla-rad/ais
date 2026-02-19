@@ -215,6 +215,10 @@ class GUIThread (threading.Thread):
                                 )
                             ).decode()
 
+                            # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
+                            if message and message.data and len(message.data)*8 in [512, 514]:
+                                self.handle_ais_authentication_message(message.data)
+
                             # And delete the fragment entry
                             del self.fragDict[sequenceId]
                     else:
@@ -357,6 +361,65 @@ class GUIThread (threading.Thread):
             # Only try once for now - just the last message
             break
     
+    def handle_ais_authentication_message(self, authentication: bytes):  
+        # Look for a message that matches the signature
+        for index in range(len(self.msgDict)-1, -1, -1):
+            messageEntry = self.msgDict[index]
+            nmeaSentence = messageEntry.nmea
+
+            # Get the device MMSI from the message content
+            mmsi = messageEntry.msg.mmsi
+
+            # Only check for signature messages that come from the same mmsi
+            # if mmsi != message['mmsi']:
+            #     continue
+
+            # Build the HTTP call to verify the message
+            url = f'http://{self.vhost}/api/signature/mmsi/verify/{mmsi}'
+            content = base64.b64encode(nmeaSentence.bit_array.tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
+            signature = base64.b64encode(authentication).decode('ascii')
+            payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
+            headers = {'content-type': 'application/json'}
+
+            # Try to verify
+            try:
+                response = requests.post(url, data=payload, headers=headers)
+                if response.ok:
+                    self.print_ais_field({"verified":"Yes"}, "verified", index)
+
+                    #Forward the message is a forwarding port is found
+                    if self.fwd_host and self.fwd_port:
+                        self.fwd_socket.sendto(nmeaSentence.raw, (self.fwd_host, self.fwd_port))
+                    break
+            except Exception as error:
+                pass # Nothing to do, verification just failed
+
+            # Only try once for now - just the last message
+            break
+
+    def timestampCalculation(self, message: dict):
+        # Figure out the current time (but no nanos)
+        now = datetime.now(timezone.utc).replace(microsecond=0)
+
+        # If the message doesn't have a second, just return the now time
+        if 'second' not in message:
+            return int(now.timestamp())
+
+        # Replace the seconds with the ones specified in the message to get the TX
+        # Be careful, cause if the second int the message is over 60, then we 
+        # assume it was encoded with 00 second
+        if message['second']< 60:
+            txTimestamp = now.replace(second=message['second'])
+        else:
+            txTimestamp = now.replace(second=0)
+
+        # If the minute is different, then it must be the previous one
+        if txTimestamp > now:
+            txTimestamp.replace(minute=txTimestamp.minute-1)
+
+        # And return the value
+        return int(txTimestamp.timestamp())
+
     def print_ais_field(self, message: dict, field: str, line: int):
         value = str(message[field] if field in message else ' ')
         start = 0
