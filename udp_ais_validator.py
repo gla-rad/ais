@@ -374,7 +374,7 @@ class GUIThread (threading.Thread):
             # Break the authentication message to signature (64 bytes) and timestamp (2 bytes)
             signature_ba = auth_msg[0:64]
             timestamp_ba = auth_msg[64:66]
-            utc_timestamp_now_ba = struct.pack('>Q',((int)(datetime.now(UTC).timestamp())))
+            utc_timestamp_now_ba = struct.pack('>Q',((int)(datetime.now(timezone.utc).timestamp())))
             utc_timestamp_sig_ba = bytearray(utc_timestamp_now_ba[0:6]+(timestamp_ba))
             utc_timestamp_sig = int.from_bytes(utc_timestamp_now_ba, byteorder='big', signed=False)
 
@@ -399,9 +399,9 @@ class GUIThread (threading.Thread):
                 utc_timestamp_sig_ba
             ).decode('ascii')
             signature = base64.b64encode(
-                auth_msg
+                signature_ba
             ).decode('ascii')
-            payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
+            payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\", \"algorithm\": \"SHA256withCVC-ECDSA\"}}"
             headers = {'content-type': 'application/json'}
 
             # Try to verify
@@ -419,29 +419,6 @@ class GUIThread (threading.Thread):
 
             # Only try once for now - just the last message
             break
-
-    def timestampCalculation(self, message: dict):
-        # Figure out the current time (but no nanos)
-        now = datetime.now(timezone.utc).replace(microsecond=0)
-
-        # If the message doesn't have a second, just return the now time
-        if 'second' not in message:
-            return int(now.timestamp())
-
-        # Replace the seconds with the ones specified in the message to get the TX
-        # Be careful, cause if the second int the message is over 60, then we 
-        # assume it was encoded with 00 second
-        if message['second']< 60:
-            txTimestamp = now.replace(second=message['second'])
-        else:
-            txTimestamp = now.replace(second=0)
-
-        # If the minute is different, then it must be the previous one
-        if txTimestamp > now:
-            txTimestamp.replace(minute=txTimestamp.minute-1)
-
-        # And return the value
-        return int(txTimestamp.timestamp())
 
     def print_ais_field(self, message: dict, field: str, line: int):
         value = str(message[field] if field in message else ' ')
