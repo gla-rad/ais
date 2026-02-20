@@ -216,8 +216,9 @@ class GUIThread (threading.Thread):
                             ).decode()
 
                             # Signature messages should always be 64 bytes long so 64 * 8 = 512 bits
-                            if message and message.data and len(message.data)*8 in [512, 514]:
-                                self.handle_ais_authentication_message(message.data)
+                            # in addition we expect the 2 least significant bytes (16 bits) of the timestamp
+                            if message and message.data and len(message.data)*8 in [528]:
+                                self.handle_ais_signature_message(message.data)
 
                             # And delete the fragment entry
                             del self.fragDict[sequenceId]
@@ -256,7 +257,7 @@ class GUIThread (threading.Thread):
                     decodedPayload = decode_into_bit_array(nmea.data_fields[-1], nmea.fill_bits).tobytes()
 
                     # And process always as an authorization message
-                    self.handle_signature_message(decodedPayload)
+                    self.handle_vde_signature_message(decodedPayload)
 
             except Exception as error:
                 self.showInfo(str(data))
@@ -265,7 +266,7 @@ class GUIThread (threading.Thread):
         # And update the window
         self.ais_window.refresh()
         
-    def handle_signature_message(self, auth_msg: bytes):  
+    def handle_vde_signature_message(self, auth_msg: bytes):  
         ##########################################################
         #        Decode the IALA G1192 Signature Message         #
         ##########################################################
@@ -361,7 +362,7 @@ class GUIThread (threading.Thread):
             # Only try once for now - just the last message
             break
     
-    def handle_ais_authentication_message(self, authentication: bytes):  
+    def handle_ais_signature_message(self, auth_msg: bytes):  
         # Look for a message that matches the signature
         for index in range(len(self.msgDict)-1, -1, -1):
             messageEntry = self.msgDict[index]
@@ -370,14 +371,36 @@ class GUIThread (threading.Thread):
             # Get the device MMSI from the message content
             mmsi = messageEntry.msg.mmsi
 
+            # Break the authentication message to signature (64 bytes) and timestamp (2 bytes)
+            signature_ba = auth_msg[0:64]
+            timestamp_ba = auth_msg[64:66]
+            utc_timestamp_now_ba = struct.pack('>Q',((int)(datetime.now(UTC).timestamp())))
+            utc_timestamp_sig_ba = bytearray(utc_timestamp_now_ba[0:6]+(timestamp_ba))
+            utc_timestamp_sig = int.from_bytes(utc_timestamp_now_ba, byteorder='big', signed=False)
+
+            # Update the calculated timestamp in the user interface
+            self.print_ais_field({"second":utc_timestamp_sig}, "second", index)
+
             # Only check for signature messages that come from the same mmsi
             # if mmsi != message['mmsi']:
             #     continue
 
+            # Now the repeat indicator hack
+            # For some reason the repeat indicator changes between the transmission
+            # and the reception and we need to reset to make sure the validation works
+            msg_bs = nmeaSentence.bit_array
+            msg_bs[6] = 0
+            msg_bs[7] = 0
+
             # Build the HTTP call to verify the message
             url = f'http://{self.vhost}/api/signature/mmsi/verify/{mmsi}'
-            content = base64.b64encode(nmeaSentence.bit_array.tobytes() + messageEntry.time.to_bytes(8, 'big')).decode('ascii')
-            signature = base64.b64encode(authentication).decode('ascii')
+            content = base64.b64encode(
+                msg_bs.tobytes() +
+                utc_timestamp_sig_ba
+            ).decode('ascii')
+            signature = base64.b64encode(
+                auth_msg
+            ).decode('ascii')
             payload = f"{{\"content\": \"{content}\", \"signature\": \"{signature}\"}}"
             headers = {'content-type': 'application/json'}
 
